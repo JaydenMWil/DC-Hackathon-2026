@@ -10,11 +10,13 @@ import {
   StatusBar,
   Switch,
   TextInput,
+  RefreshControl,
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Dimensions
 } from 'react-native';
+import * as Location from 'expo-location';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 // ─── MINIMAL QR CODE GENERATOR ───────────────────────────────────────────────
@@ -112,11 +114,62 @@ const AccessRideApp = () => {
   const [locationPerm, setLocationPerm] = useState('while_using');
   const [dataSharing, setDataSharing] = useState(true);
 
-  const routes = [
-    { id: 1, from: 'Downtown', to: 'Durham college North campus', accessible: true, time: '18 min', crowding: 'low', pts: 15, line: 'Route 915' },
-    { id: 2, from: 'Downtown', to: 'Durham college North campus', accessible: false, time: '15 min', crowding: 'medium', pts: 5, line: 'Route 920' },
-    { id: 3, from: 'Downtown', to: 'Durham college North campus', accessible: true, time: '22 min', crowding: 'high', pts: 15, line: 'Route 925' },
-  ];
+  const [location, setLocation] = useState(null);
+  const [liveRoutes, setLiveRoutes] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filterAccessible, setFilterAccessible] = useState(false);
+  const [filterLimited, setFilterLimited] = useState(false);
+
+  const fetchLiveRoutes = async (loc) => {
+    const coords = loc || location;
+    if (!coords) return;
+
+    try {
+      const resp = await fetch(`http://10.160.33.215:8000/buses/nearby?lat=${coords.coords.latitude}&lon=${coords.coords.longitude}`);
+      const data = await resp.json();
+      setLiveRoutes(data.buses || []);
+    } catch (err) {
+      console.error("Error fetching live routes", err);
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status === 'granted') {
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation(loc);
+      await fetchLiveRoutes(loc);
+    }
+    setRefreshing(false);
+  }, [location]);
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation(loc);
+      fetchLiveRoutes(loc);
+    })();
+  }, []);
+
+  useEffect(() => {
+    let interval;
+    if (tab === 'routes') {
+      interval = setInterval(() => {
+        fetchLiveRoutes();
+      }, 30000);
+    }
+    return () => clearInterval(interval);
+  }, [tab, location]);
+
+  const filteredRoutes = useMemo(() => {
+    let r = [...liveRoutes];
+    if (filterAccessible) r = r.filter(x => x.accessible);
+    if (filterLimited) r = r.slice(0, 5);
+    return r;
+  }, [liveRoutes, filterAccessible, filterLimited]);
 
   const rewards = [
     { id: 1, name: 'BrewHouse Café', offer: '$2 off', pts: 150, icon: '☕', claimed: false },
@@ -144,7 +197,7 @@ const AccessRideApp = () => {
   const [schedAmPm, setSchedAmPm] = useState('AM');
   const [schedOrigin, setSchedOrigin] = useState('Downtown Station');
   const [schedDest, setSchedDest] = useState('Durham College North');
-  
+
   // ── Map & Location State ───────────────────────────────────────────────────────
   const [mapRegion, setMapRegion] = useState({
     latitude: 43.897,
@@ -206,7 +259,7 @@ const AccessRideApp = () => {
       recommended_bus_id: recBus,
     };
 
-    const url = editingScheduleId 
+    const url = editingScheduleId
       ? `${process.env.EXPO_PUBLIC_API_URL}/schedules/${editingScheduleId}`
       : `${process.env.EXPO_PUBLIC_API_URL}/schedules/`;
     const method = editingScheduleId ? 'PUT' : 'POST';
@@ -216,12 +269,12 @@ const AccessRideApp = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(() => {
-      fetchSchedules();
-      setShowScheduleModal(false);
-    })
-    .catch(err => console.error("Error saving schedule", err));
+      .then(res => res.json())
+      .then(() => {
+        fetchSchedules();
+        setShowScheduleModal(false);
+      })
+      .catch(err => console.error("Error saving schedule", err));
   };
 
   const deleteSchedule = (id) => {
@@ -252,13 +305,13 @@ const AccessRideApp = () => {
   const selectSearchResult = async (feature) => {
     const [lon, lat] = feature.geometry.coordinates;
     const name = feature.properties.name || feature.properties.street || "Selected Location";
-    
+
     setSearchQuery(name);
     setShowSearchDropdown(false);
     Keyboard.dismiss();
 
     setSelectedPin({ lat, lon, name });
-    
+
     // Animate map to new location
     setMapRegion({
       latitude: lat,
@@ -294,25 +347,25 @@ const AccessRideApp = () => {
     setMapStops([]);
     setSelectedPin(null);
   };
-  
+
   const openEditSchedule = (sched) => {
     setEditingScheduleId(sched.id);
     setSchedLabel(sched.schedule_label);
     setSchedDay(sched.scheduled_days);
-    
+
     const oStop = availableStops.find(s => Math.abs(s.lat - sched.origin_lat) < 0.001) || availableStops[0];
     const dStop = availableStops.find(s => Math.abs(s.lat - sched.dest_lat) < 0.001) || availableStops[1];
     setSchedOrigin(oStop.name);
     setSchedDest(dStop.name);
-    
+
     let totalMins = sched.scheduled_time;
     let h = Math.floor(totalMins / 60);
     let m = totalMins % 60;
-    
+
     let ampm = h >= 12 ? 'PM' : 'AM';
     let displayHour = h % 12;
     if (displayHour === 0) displayHour = 12;
-    
+
     setSchedHour(displayHour.toString());
     setSchedMinute(m < 10 ? '0' + m : m.toString());
     setSchedAmPm(ampm);
@@ -552,12 +605,32 @@ const AccessRideApp = () => {
 
   // ─── ROUTES TAB ────────────────────────────────────────────────────────────
   const RoutesTab = () => (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={s.tabContent}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
+    >
       <View style={[s.row, { marginBottom: 16 }]}>
         <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
           <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
-        <Text style={s.pageTitle}>Route Options</Text>
+        <Text style={s.pageTitle}>Live Routes near you</Text>
+      </View>
+
+      {/* Filters */}
+      <View style={[s.row, { marginBottom: 16, gap: 10 }]}>
+        <TouchableOpacity
+          style={[s.filterChip, filterAccessible && s.filterChipActive]}
+          onPress={() => setFilterAccessible(!filterAccessible)}
+        >
+          <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]}>♿ Accessible</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.filterChip, filterLimited && s.filterChipActive]}
+          onPress={() => setFilterLimited(!filterLimited)}
+        >
+          <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]}>📍 Top 5</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
@@ -565,63 +638,68 @@ const AccessRideApp = () => {
           <View style={[s.row, { flex: 1, alignItems: 'center' }]}>
             <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
             <View style={{ marginLeft: 8 }}>
-              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Downtown</Text>
-              <Text style={s.mutedSm}>Main Station</Text>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Current Location</Text>
+              <Text style={s.mutedSm}>{location ? `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : 'Detecting...'}</Text>
             </View>
           </View>
           <Text style={{ color: '#9ca3af', fontSize: 16, marginHorizontal: 8 }}>→</Text>
           <View style={[s.row, { flex: 1, alignItems: 'center', justifyContent: 'flex-end' }]}>
-            <View style={{ alignItems: 'flex-end', marginRight: 8 }}>
-              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Durham college{'\n'}North campus</Text>
-              <Text style={s.mutedSm}>Campus Stop</Text>
+            <View style={{ alignItems: 'flex-end', marginRight: 8, flex: 1 }}>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13, textAlign: 'right' }} numberOfLines={1}>Search Radius</Text>
+              <Text style={s.mutedSm}>5 km</Text>
             </View>
             <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
           </View>
         </View>
       </View>
 
-      {routes.map(route => {
-        const cs = crowdingStyle(route.crowding);
-        const selected = selectedRoute?.id === route.id;
-        return (
-          <TouchableOpacity
-            key={route.id}
-            style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
-            onPress={() => selectRoute(route)}
-          >
-            <View style={s.rowBetween}>
-              <View>
-                <View style={s.row}>
-                  <Text style={{ fontSize: 22, fontWeight: '700', color: '#111827' }}>{route.time}</Text>
-                  {route.accessible && <Text style={{ fontSize: 18, marginLeft: 6 }}>♿</Text>}
+      {filteredRoutes.length === 0 ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <Text style={{ color: '#6b7280' }}>No live buses found nearby</Text>
+        </View>
+      ) : (
+        filteredRoutes.map(route => {
+          const cs = crowdingStyle(route.crowding);
+          const selected = selectedRoute?.id === route.id;
+          return (
+            <TouchableOpacity
+              key={route.id}
+              style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
+              onPress={() => selectRoute(route)}
+            >
+              <View style={s.rowBetween}>
+                <View style={{ flex: 1 }}>
+                  <View style={[s.row, { justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }]}>
+                    <Text style={{ fontSize: 24, fontWeight: '700', color: GREEN }}>{route.eta}</Text>
+                    {route.accessible && <Text style={{ fontSize: 20 }}>♿</Text>}
+                  </View>
+                  <View style={{ marginBottom: 4 }}>
+                    <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                      {route.route_long_name === 'Unknown Route'
+                        ? (isNaN(route.route_name) ? route.route_name : `Route ${route.route_name}`)
+                        : route.route_long_name}
+                    </Text>
+                  </View>
+                  <Text style={s.mutedSm}>{route.route_name} • {(route.distance_m / 1000).toFixed(1)} km away</Text>
                 </View>
-                <Text style={s.mutedSm}>{route.line} • Express</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: GREEN, fontWeight: '700' }}>+15 pts</Text>
+                  <View style={[s.badge, { backgroundColor: cs.bg, marginTop: 4 }]}>
+                    <Text style={{ color: cs.text, fontSize: 11, fontWeight: '600' }}>{crowdingEmoji(route.crowding)} {route.crowding}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: GREEN, fontWeight: '700' }}>+{route.pts} pts</Text>
-                <Text style={[s.mutedSm, { marginTop: 2, textTransform: 'capitalize' }]}>{route.crowding} crowd</Text>
-              </View>
-            </View>
-            <View style={[s.row, { marginTop: 10, flexWrap: 'wrap', gap: 6 }]}>
-              {route.accessible && (
-                <View style={[s.badge, { backgroundColor: '#dcfce7' }]}>
-                  <Text style={{ color: '#15803d', fontSize: 11, fontWeight: '600' }}>Accessible (+15 pts)</Text>
+              {selected && (
+                <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                  <TouchableOpacity style={s.btnGreen}>
+                    <Text style={s.btnText}>Start Tracking</Text>
+                  </TouchableOpacity>
                 </View>
               )}
-              <View style={[s.badge, { backgroundColor: cs.bg }]}>
-                <Text style={{ color: cs.text, fontSize: 11, fontWeight: '600' }}>{crowdingEmoji(route.crowding)} {route.crowding}</Text>
-              </View>
-            </View>
-            {selected && (
-              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                <TouchableOpacity style={s.btnGreen}>
-                  <Text style={s.btnText}>Start Navigation</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+            </TouchableOpacity>
+          );
+        })
+      )}
       <View style={{ height: 80 }} />
     </ScrollView>
   );
@@ -772,7 +850,7 @@ const AccessRideApp = () => {
           <Text style={[s.btnText, { paddingHorizontal: 16 }]}>+ New</Text>
         </TouchableOpacity>
       </View>
-      
+
       {schedules.length === 0 ? (
         <View style={{ alignItems: 'center', marginTop: 40 }}>
           <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
@@ -784,8 +862,8 @@ const AccessRideApp = () => {
           let m = sched.scheduled_time % 60;
           let ampm = h >= 12 ? 'PM' : 'AM';
           let displayHour = h % 12 || 12;
-          let timeString = `${displayHour}:${m < 10 ? '0'+m : m} ${ampm}`;
-          
+          let timeString = `${displayHour}:${m < 10 ? '0' + m : m} ${ampm}`;
+
           return (
             <View key={sched.id} style={[s.card, s.cardWhite, { marginBottom: 10 }]}>
               <View style={s.rowBetween}>
@@ -1319,7 +1397,7 @@ const AccessRideApp = () => {
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 40 }} style={{ width: '100%', maxWidth: 480 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <TouchableOpacity style={s.modalBox} activeOpacity={1}>
               <Text style={s.modalTitle}>{editingScheduleId ? 'Edit Schedule' : 'New Schedule'}</Text>
-              
+
               <Text style={[s.fieldLabel, { marginTop: 10 }]}>Schedule Name</Text>
               <TextInput
                 style={[s.textInput, { height: 48, marginBottom: 16 }]}
@@ -1329,8 +1407,8 @@ const AccessRideApp = () => {
               />
 
               <Text style={s.fieldLabel}>Origin</Text>
-              <TouchableOpacity 
-                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]} 
+              <TouchableOpacity
+                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]}
                 onPress={() => setSelectingFor('origin')}
               >
                 <Text style={{ color: selectingFor === 'origin' ? GREEN : '#111827', fontWeight: selectingFor === 'origin' ? '700' : '400' }}>
@@ -1339,8 +1417,8 @@ const AccessRideApp = () => {
               </TouchableOpacity>
 
               <Text style={s.fieldLabel}>Destination</Text>
-              <TouchableOpacity 
-                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]} 
+              <TouchableOpacity
+                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]}
                 onPress={() => setSelectingFor('dest')}
               >
                 <Text style={{ color: selectingFor === 'dest' ? GREEN : '#111827', fontWeight: selectingFor === 'dest' ? '700' : '400' }}>
@@ -1351,7 +1429,7 @@ const AccessRideApp = () => {
               {/* Interactive Search & Map Area */}
               <View style={{ marginBottom: 20, backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
                 <Text style={[s.fieldLabel, { fontSize: 13 }]}>Find {selectingFor === 'origin' ? 'Origin' : 'Destination'} 📍</Text>
-                
+
                 <TextInput
                   style={[s.textInput, { height: 44, marginBottom: 8 }]}
                   placeholder="Type an address to search..."
@@ -1364,8 +1442,8 @@ const AccessRideApp = () => {
                   <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', maxHeight: 150, marginBottom: 8, overflow: 'hidden' }}>
                     <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                       {searchResults.map((result, idx) => (
-                        <TouchableOpacity 
-                          key={idx} 
+                        <TouchableOpacity
+                          key={idx}
                           style={{ padding: 12, borderBottomWidth: idx < searchResults.length - 1 ? 1 : 0, borderBottomColor: '#f3f4f6' }}
                           onPress={() => selectSearchResult(result)}
                         >
@@ -1384,12 +1462,12 @@ const AccessRideApp = () => {
                   <MapView
                     style={{ flex: 1 }}
                     region={mapRegion}
-                    onRegionChangeComplete={(reg) => {/* optional: reverse geocode on map drag */}}
+                    onRegionChangeComplete={(reg) => {/* optional: reverse geocode on map drag */ }}
                   >
                     {/* The Searched Pin */}
                     {selectedPin && (
-                      <Marker 
-                        coordinate={{ latitude: selectedPin.lat, longitude: selectedPin.lon }} 
+                      <Marker
+                        coordinate={{ latitude: selectedPin.lat, longitude: selectedPin.lon }}
                         pinColor="blue"
                         title={selectedPin.name}
                         description="Searched Location"
@@ -1411,73 +1489,73 @@ const AccessRideApp = () => {
 
                   {/* Instructions Overlay */}
                   {mapStops.length > 0 && (
-                     <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', padding: 8, borderRadius: 8 }}>
-                       <Text style={{ fontSize: 11, fontWeight: '600', textAlign: 'center' }}>Tap a bus stop pin to select it.</Text>
-                       <Text style={{ fontSize: 10, textAlign: 'center', color: '#6b7280' }}>Green pins = ♿ Accessible</Text>
-                     </View>
+                    <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', padding: 8, borderRadius: 8 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', textAlign: 'center' }}>Tap a bus stop pin to select it.</Text>
+                      <Text style={{ fontSize: 10, textAlign: 'center', color: '#6b7280' }}>Green pins = ♿ Accessible</Text>
+                    </View>
                   )}
                 </View>
               </View>
 
               <Text style={s.fieldLabel}>Day</Text>
               <View style={[s.row, { gap: 8, marginBottom: 16, flexWrap: 'wrap' }]}>
-              {['Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                <TouchableOpacity
-                  key={d}
-                  style={[s.badge, schedDay === d ? { backgroundColor: GREEN } : { backgroundColor: '#e5e7eb' }]}
-                  onPress={() => setSchedDay(d)}
-                >
-                  <Text style={{ color: schedDay === d ? '#fff' : '#374151', fontWeight: '600' }}>{d}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                {['Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[s.badge, schedDay === d ? { backgroundColor: GREEN } : { backgroundColor: '#e5e7eb' }]}
+                    onPress={() => setSchedDay(d)}
+                  >
+                    <Text style={{ color: schedDay === d ? '#fff' : '#374151', fontWeight: '600' }}>{d}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <Text style={s.fieldLabel}>Time</Text>
-            <View style={[s.row, { gap: 8, marginBottom: 24 }]}>
-              <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                <TextInput
-                  style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
-                  value={schedHour}
-                  onChangeText={h => setSchedHour(h.replace(/[^0-9]/g, ''))}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                />
+              <Text style={s.fieldLabel}>Time</Text>
+              <View style={[s.row, { gap: 8, marginBottom: 24 }]}>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                  <TextInput
+                    style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
+                    value={schedHour}
+                    onChangeText={h => setSchedHour(h.replace(/[^0-9]/g, ''))}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                </View>
+                <Text style={{ fontSize: 24, fontWeight: '700' }}>:</Text>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                  <TextInput
+                    style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
+                    value={schedMinute}
+                    onChangeText={m => setSchedMinute(m.replace(/[^0-9]/g, ''))}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                </View>
+                <View style={[s.row, { backgroundColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }]}>
+                  <TouchableOpacity
+                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' }}
+                    onPress={() => setSchedAmPm('AM')}
+                  >
+                    <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : '#6b7280' }}>AM</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' }}
+                    onPress={() => setSchedAmPm('PM')}
+                  >
+                    <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : '#6b7280' }}>PM</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={{ fontSize: 24, fontWeight: '700' }}>:</Text>
-              <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                <TextInput
-                  style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
-                  value={schedMinute}
-                  onChangeText={m => setSchedMinute(m.replace(/[^0-9]/g, ''))}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                />
-              </View>
-              <View style={[s.row, { backgroundColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }]}>
-                <TouchableOpacity
-                  style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' }}
-                  onPress={() => setSchedAmPm('AM')}
-                >
-                  <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : '#6b7280' }}>AM</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' }}
-                  onPress={() => setSchedAmPm('PM')}
-                >
-                  <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : '#6b7280' }}>PM</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
-            <View style={[s.row, { gap: 10 }]}>
-              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowScheduleModal(false)}>
-                <Text style={s.btnGrayText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
-                <Text style={s.btnText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+              <View style={[s.row, { gap: 10 }]}>
+                <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowScheduleModal(false)}>
+                  <Text style={s.btnGrayText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
+                  <Text style={s.btnText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -1614,6 +1692,26 @@ const s = StyleSheet.create({
   qrBox: { backgroundColor: '#f3f4f6', borderRadius: 10, padding: 14, width: '100%', marginBottom: 8 },
   qrInner: { backgroundColor: '#fff', padding: 24, borderRadius: 8, alignItems: 'center', marginBottom: 6 },
   textInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', height: 100, textAlignVertical: 'top' },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  filterChipActive: {
+    backgroundColor: GREEN,
+    borderColor: GREEN,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
 });
 
 export default AccessRideApp;
