@@ -88,6 +88,7 @@ const AccessRideApp = () => {
   const [issueType, setIssueType] = useState('');
   const [reportStep, setReportStep] = useState('SELECT_TYPE'); // 'SELECT_TYPE', 'ENTER_DETAILS', 'CONFIRM', 'SUCCESS'
   const [issueDetails, setIssueDetails] = useState('');
+  const [issueRoute, setIssueRoute] = useState('');
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
@@ -190,7 +191,7 @@ const AccessRideApp = () => {
       .then(data => {
         const formatted = data.map(item => ({
           id: item.issue_id,
-          route: item.bus_name || item.stop_name || 'General',
+          route: item.route_name || item.bus_name || item.stop_name || 'General',
           issue: `${item.issue_type === 'bus-missed' ? "Bus didn't arrive" : item.issue_type === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : item.issue_type === 'crowding' ? "Heavy crowding" : item.issue_type === 'bike-rack-full' ? "Bike rack is full" : item.issue_type === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}${item.details ? ' - ' + item.details : ''}`,
           time: new Date(item.timestamp + 'Z').toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true }),
           points: 20
@@ -231,7 +232,8 @@ const AccessRideApp = () => {
       body: JSON.stringify({
         issue_type: issueType,
         details: issueDetails,
-        bus_name: 'Route 915', // Default since UI doesn't collect it yet
+        route_name: issueRoute,
+        bus_name: issueRoute,
         stop_name: null
       })
     })
@@ -244,12 +246,20 @@ const AccessRideApp = () => {
     .catch(err => console.error("Error submitting report", err));
   };
 
+  const handleOpenReport = () => {
+    if (selectedRoute) {
+      setIssueRoute(selectedRoute.route_name || selectedRoute.line || '');
+    }
+    setShowReportIssue(true);
+  };
+
   const closeReportModal = () => {
     setShowReportIssue(false);
     setTimeout(() => {
       setReportStep('SELECT_TYPE');
       setIssueType('');
       setIssueDetails('');
+      setIssueRoute('');
     }, 300);
   };
 
@@ -292,7 +302,7 @@ const AccessRideApp = () => {
             <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600', marginTop: 4 }}>+{alert.points} pts for reporter</Text>
           </View>
         ))}
-        <TouchableOpacity style={s.btnOrange} onPress={() => setShowReportIssue(true)}>
+        <TouchableOpacity style={s.btnOrange} onPress={handleOpenReport}>
           <Text style={s.btnText}>Report an Issue (+20 pts)</Text>
         </TouchableOpacity>
       </View>
@@ -736,7 +746,28 @@ const AccessRideApp = () => {
             {reportStep === 'ENTER_DETAILS' && (
               <>
                 <Text style={s.modalTitle}>Provide Details</Text>
-                <Text style={[s.mutedSm, { marginBottom: 12 }]}>Add specific details to help other riders.</Text>
+                
+                <Text style={s.fieldLabel}>Which Route?</Text>
+                <View style={[s.row, { flexWrap: 'wrap', gap: 6, marginBottom: 8 }]}>
+                  {['915', '302', '900', '405'].map(r => (
+                    <TouchableOpacity 
+                      key={r} 
+                      style={[s.filterChip, issueRoute.includes(r) && s.filterChipActive]}
+                      onPress={() => setIssueRoute(`Route ${r}`)}
+                    >
+                      <Text style={[s.filterChipText, issueRoute.includes(r) && s.filterChipTextActive]}>{r}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[s.textInput, { height: 45, marginBottom: 12 }]}
+                  placeholder="Enter Route Name (e.g. Route 915)"
+                  placeholderTextColor="#9ca3af"
+                  value={issueRoute}
+                  onChangeText={setIssueRoute}
+                />
+
+                <Text style={s.fieldLabel}>Issue Details</Text>
                 <TextInput
                   style={s.textInput}
                   multiline
@@ -753,8 +784,12 @@ const AccessRideApp = () => {
                   <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('SELECT_TYPE')}>
                     <Text style={s.btnGrayText}>Back</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={handleReportNext}>
-                    <Text style={s.btnText}>Review</Text>
+                  <TouchableOpacity 
+                    style={[s.btnHalf, (issueType && issueRoute) ? s.btnGreen : s.btnGrayDisabled]} 
+                    onPress={handleReportNext}
+                    disabled={!issueType || !issueRoute}
+                  >
+                    <Text style={[s.btnText, (!issueType || !issueRoute) && { color: '#9ca3af' }]}>Review</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -766,9 +801,13 @@ const AccessRideApp = () => {
                 <Text style={[s.mutedSm, { marginBottom: 16 }]}>Please review your report before submitting.</Text>
                 <View style={{ backgroundColor: '#f9fafb', padding: 14, borderRadius: 10, marginBottom: 16 }}>
                   <Text style={[s.mutedSm, { marginBottom: 4 }]}>Issue Type</Text>
-                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 12 }}>
+                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>
                     {issueType === 'bus-missed' ? "Bus didn't arrive" : issueType === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : issueType === 'crowding' ? "Heavy crowding" : issueType === 'bike-rack-full' ? "Bike rack is full" : issueType === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}
                   </Text>
+                  
+                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Route</Text>
+                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>{issueRoute}</Text>
+
                   <Text style={[s.mutedSm, { marginBottom: 4 }]}>Details</Text>
                   <Text style={{ color: '#374151', fontSize: 13 }}>
                     {issueDetails || 'No additional details provided.'}

@@ -11,6 +11,7 @@ class IssueCreate(BaseModel):
     issue_type: str
     details: str | None = None
     bus_name: str | None = None
+    route_name: str | None = None
     stop_name: str | None = None
 
 @router.get("/")
@@ -28,9 +29,9 @@ def create_report(issue: IssueCreate):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO issues (issue_type, details, bus_name, stop_name)
-        VALUES (?, ?, ?, ?)
-    ''', (issue.issue_type, issue.details, issue.bus_name, issue.stop_name))
+        INSERT INTO issues (issue_type, details, bus_name, route_name, stop_name)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (issue.issue_type, issue.details, issue.bus_name, issue.route_name, issue.stop_name))
     conn.commit()
     issue_id = cursor.lastrowid
     conn.close()
