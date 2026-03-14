@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
   Switch,
+  TextInput,
 } from 'react-native';
 
 // ─── MINIMAL QR CODE GENERATOR ───────────────────────────────────────────────
@@ -83,6 +84,8 @@ const AccessRideApp = () => {
   const [showDiagram, setShowDiagram] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [issueType, setIssueType] = useState('');
+  const [reportStep, setReportStep] = useState('SELECT_TYPE'); // 'SELECT_TYPE', 'ENTER_DETAILS', 'CONFIRM', 'SUCCESS'
+  const [issueDetails, setIssueDetails] = useState('');
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
@@ -142,12 +145,26 @@ const AccessRideApp = () => {
     }
   };
 
-  const submitIssueReport = () => {
-    if (issueType) {
-      setPoints(p => p + 20);
-      setShowReportIssue(false);
-      setIssueType('');
+  const handleReportNext = () => {
+    if (reportStep === 'SELECT_TYPE' && issueType) {
+      setReportStep('ENTER_DETAILS');
+    } else if (reportStep === 'ENTER_DETAILS') {
+      setReportStep('CONFIRM');
     }
+  };
+
+  const submitIssueReport = () => {
+    setPoints(p => p + 20);
+    setReportStep('SUCCESS');
+  };
+
+  const closeReportModal = () => {
+    setShowReportIssue(false);
+    setTimeout(() => {
+      setReportStep('SELECT_TYPE');
+      setIssueType('');
+      setIssueDetails('');
+    }, 300);
   };
 
   const crowdingStyle = (crowding) => {
@@ -574,32 +591,103 @@ const AccessRideApp = () => {
       </View>
 
       {/* Report Issue Modal */}
-      <Modal visible={showReportIssue} transparent animationType="fade" onRequestClose={() => setShowReportIssue(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowReportIssue(false)}>
+      <Modal visible={showReportIssue} transparent animationType="fade" onRequestClose={closeReportModal}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={closeReportModal}>
           <TouchableOpacity style={s.modalBox} activeOpacity={1}>
-            <Text style={s.modalTitle}>Report an Issue</Text>
-            <View style={[s.infoBanner, { backgroundColor: '#f0fdf4' }]}>
-              <Text style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Help your community by reporting issues</Text>
-              <Text style={{ fontSize: 11, color: '#15803d' }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
-            </View>
-            <IssueOption value="bus-missed" label="Bus didn't arrive" sub="Snow, delays, or cancellations" icon="🚫" />
-            <IssueOption value="wheelchair ramps-out" label="Wheelchair ramps out of service" sub="Accessibility barrier" icon="♿" />
-            <IssueOption value="crowding" label="Heavy crowding" sub="Difficult to board" icon="👥" />
-            <IssueOption value="bike-rack-full" label="Bike rack is full" sub="No space available on the rack" icon="🚲" />
-            <IssueOption value="ramp-unsafe" label="Ramp landing not safe to descend" sub="Hazardous ramp condition reported" icon="⚠️" />
-            <IssueOption value="other" label="Other issue" sub="Report another problem" icon="📝" />
-            <View style={[s.row, { marginTop: 16, gap: 10 }]}>
-              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowReportIssue(false)}>
-                <Text style={s.btnGrayText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.btnHalf, issueType ? s.btnGreen : s.btnGrayDisabled]}
-                onPress={submitIssueReport}
-                disabled={!issueType}
-              >
-                <Text style={[s.btnText, !issueType && { color: '#9ca3af' }]}>Submit Report</Text>
-              </TouchableOpacity>
-            </View>
+            {reportStep === 'SELECT_TYPE' && (
+              <>
+                <Text style={s.modalTitle}>Report an Issue</Text>
+                <View style={[s.infoBanner, { backgroundColor: '#f0fdf4' }]}>
+                  <Text style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Help your community by reporting issues</Text>
+                  <Text style={{ fontSize: 11, color: '#15803d' }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
+                </View>
+                <IssueOption value="bus-missed" label="Bus didn't arrive" sub="Snow, delays, or cancellations" icon="🚫" />
+                <IssueOption value="wheelchair ramps-out" label="Wheelchair ramps out of service" sub="Accessibility barrier" icon="♿" />
+                <IssueOption value="crowding" label="Heavy crowding" sub="Difficult to board" icon="👥" />
+                <IssueOption value="bike-rack-full" label="Bike rack is full" sub="No space available on the rack" icon="🚲" />
+                <IssueOption value="ramp-unsafe" label="Ramp landing not safe to descend" sub="Hazardous ramp condition reported" icon="⚠️" />
+                <IssueOption value="other" label="Other issue" sub="Report another problem" icon="📝" />
+                <View style={[s.row, { marginTop: 16, gap: 10 }]}>
+                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={closeReportModal}>
+                    <Text style={s.btnGrayText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.btnHalf, issueType ? s.btnGreen : s.btnGrayDisabled]}
+                    onPress={handleReportNext}
+                    disabled={!issueType}
+                  >
+                    <Text style={[s.btnText, !issueType && { color: '#9ca3af' }]}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {reportStep === 'ENTER_DETAILS' && (
+              <>
+                <Text style={s.modalTitle}>Provide Details</Text>
+                <Text style={[s.mutedSm, { marginBottom: 12 }]}>Add specific details to help other riders.</Text>
+                <TextInput
+                  style={s.textInput}
+                  multiline
+                  placeholder="E.g., North entrance ramp is blocked by snow..."
+                  placeholderTextColor="#9ca3af"
+                  value={issueDetails}
+                  onChangeText={text => setIssueDetails(text.slice(0, 200))}
+                  maxLength={200}
+                />
+                <Text style={[s.mutedSm, { textAlign: 'right', marginTop: 4, marginBottom: 16 }]}>
+                  {issueDetails.length}/200 characters
+                </Text>
+                <View style={[s.row, { gap: 10 }]}>
+                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('SELECT_TYPE')}>
+                    <Text style={s.btnGrayText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={handleReportNext}>
+                    <Text style={s.btnText}>Review</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {reportStep === 'CONFIRM' && (
+              <>
+                <Text style={s.modalTitle}>Confirm Report</Text>
+                <Text style={[s.mutedSm, { marginBottom: 16 }]}>Please review your report before submitting.</Text>
+                <View style={{ backgroundColor: '#f9fafb', padding: 14, borderRadius: 10, marginBottom: 16 }}>
+                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Issue Type</Text>
+                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 12 }}>
+                    {issueType === 'bus-missed' ? "Bus didn't arrive" : issueType === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : issueType === 'crowding' ? "Heavy crowding" : issueType === 'bike-rack-full' ? "Bike rack is full" : issueType === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}
+                  </Text>
+                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Details</Text>
+                  <Text style={{ color: '#374151', fontSize: 13 }}>
+                    {issueDetails || 'No additional details provided.'}
+                  </Text>
+                </View>
+                <View style={[s.row, { gap: 10 }]}>
+                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('ENTER_DETAILS')}>
+                    <Text style={s.btnGrayText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={submitIssueReport}>
+                    <Text style={s.btnText}>Submit Report</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {reportStep === 'SUCCESS' && (
+              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                <Text style={{ fontSize: 56, marginBottom: 12 }}>🎉</Text>
+                <Text style={[s.modalTitle, { textAlign: 'center' }]}>Report Submitted!</Text>
+                <Text style={[s.mutedSm, { textAlign: 'center', marginBottom: 16 }]}>Thank you for helping keep the community informed.</Text>
+                <View style={[s.infoBanner, { backgroundColor: '#dcfce7', width: '100%', alignItems: 'center' }]}>
+                  <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18 }}>+20 Points</Text>
+                  <Text style={{ color: '#166534', fontSize: 12, marginTop: 4 }}>Added to your balance</Text>
+                </View>
+                <TouchableOpacity style={[s.btnGreen, { width: '100%', marginTop: 20 }]} onPress={closeReportModal}>
+                  <Text style={s.btnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1065,6 +1153,7 @@ const s = StyleSheet.create({
 
   qrBox: { backgroundColor: '#f3f4f6', borderRadius: 10, padding: 14, width: '100%', marginBottom: 8 },
   qrInner: { backgroundColor: '#fff', padding: 24, borderRadius: 8, alignItems: 'center', marginBottom: 6 },
+  textInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', height: 100, textAlignVertical: 'top' },
 });
 
 export default AccessRideApp;
