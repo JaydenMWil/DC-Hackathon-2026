@@ -1,5 +1,6 @@
 from math import radians, sin, cos, sqrt, atan2
-
+import requests
+from google.transit import gtfs_realtime_pb2
 
 
 def fetch_all_bus_positions():
