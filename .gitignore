@@ -1,7 +1,8 @@
 frontend/node_modules
 node_modules
 .expo/
-
+__pycache__/
+*.pyc
 # Local environment variables
 .env
 .env.local
