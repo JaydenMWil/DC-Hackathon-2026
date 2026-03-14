@@ -1,0 +1,748 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  SafeAreaView,
+  StatusBar,
+  Switch,
+} from 'react-native';
+
+const GREEN = '#007647';
+const DARK_GREEN = '#00703c';
+const BG = '#f0f7f4';
+
+const AccessRideApp = () => {
+  const [tab, setTab] = useState('home');
+  const [points, setPoints] = useState(245);
+  const [streak, setStreak] = useState(5);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [showReward, setShowReward] = useState(null);
+  const [gpsAlertEnabled, setGpsAlertEnabled] = useState(false);
+  const [alertRadius, setAlertRadius] = useState(100);
+  const [showGpsSettings, setShowGpsSettings] = useState(false);
+  const [showDiagram, setShowDiagram] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
+  const [issueType, setIssueType] = useState('');
+
+  const routes = [
+    { id: 1, from: 'Downtown', to: 'Durham college North campus', accessible: true, time: '18 min', crowding: 'low', pts: 15, line: 'Route 915' },
+    { id: 2, from: 'Downtown', to: 'Durham college North campus', accessible: false, time: '15 min', crowding: 'medium', pts: 5, line: 'Route 920' },
+    { id: 3, from: 'Downtown', to: 'Durham college North campus', accessible: true, time: '22 min', crowding: 'high', pts: 15, line: 'Route 925' },
+  ];
+
+  const rewards = [
+    { id: 1, name: 'BrewHouse Café', offer: '$2 off', pts: 150, icon: '☕', claimed: false },
+    { id: 2, name: 'City Museum', offer: 'Free entry', pts: 200, icon: '🏛️', claimed: false },
+    { id: 3, name: 'Transit Store', offer: '10% off', pts: 100, icon: '👕', claimed: true },
+    { id: 4, name: 'Green Bistro', offer: '15% off', pts: 180, icon: '🥗', claimed: false },
+    { id: 5, name: 'Book Nook', offer: '$5 off', pts: 120, icon: '📚', claimed: false },
+  ];
+
+  const achievements = [
+    { id: 1, name: 'Early Bird', desc: '10 rides before 7 AM', icon: '🌅', progress: 6, total: 10 },
+    { id: 2, name: 'City Explorer', desc: '15 different stations', icon: '🗺️', progress: 15, total: 15 },
+    { id: 3, name: 'Accessibility Ally', desc: '5 accessibility reports', icon: '🦸', progress: 3, total: 5 },
+    { id: 4, name: 'Transit Helper', desc: '7-day streak', icon: '⚡', progress: 5, total: 7 },
+  ];
+
+  const communityAlerts = [
+    { id: 1, route: 'Route 915', issue: "Bus didn't arrive - snow buildup", time: '15 min ago', points: 20 },
+    { id: 2, route: 'Route 920', issue: 'Wheelchair ramps out of service at Main Station', time: '1 hour ago', points: 20 },
+  ];
+
+  const selectRoute = (route) => {
+    setSelectedRoute(route);
+    if (route.accessible) setPoints(p => p + 15);
+  };
+
+  const redeem = (reward) => {
+    if (points >= reward.pts && !reward.claimed) {
+      setPoints(p => p - reward.pts);
+      setShowReward(reward);
+    }
+  };
+
+  const submitIssueReport = () => {
+    if (issueType) {
+      setPoints(p => p + 20);
+      setShowReportIssue(false);
+      setIssueType('');
+    }
+  };
+
+  const crowdingStyle = (crowding) => {
+    if (crowding === 'low') return { bg: '#dcfce7', text: '#15803d' };
+    if (crowding === 'medium') return { bg: '#fef9c3', text: '#a16207' };
+    return { bg: '#fee2e2', text: '#b91c1c' };
+  };
+
+  const crowdingEmoji = (crowding) => {
+    if (crowding === 'low') return '🟢';
+    if (crowding === 'medium') return '🟡';
+    return '🔴';
+  };
+
+  // ─── HOME TAB ──────────────────────────────────────────────────────────────
+  const HomeTab = () => (
+    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+
+      {/* Balance Card */}
+      <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
+        <Text style={s.cardTitle}>Your Balance</Text>
+        <Text style={s.bigPoints}>{points} points</Text>
+        <Text style={{ color: '#bbf7d0', fontSize: 13 }}>Ready to redeem at local partners</Text>
+      </View>
+
+      {/* Community Alerts */}
+      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
+        <View style={s.row}>
+          <Text style={s.iconMd}>🚨</Text>
+          <Text style={s.sectionTitle}>Community Alerts</Text>
+        </View>
+        {communityAlerts.map(alert => (
+          <View key={alert.id} style={s.alertBox}>
+            <View style={[s.rowBetween, { marginBottom: 2 }]}>
+              <Text style={s.alertRoute}>{alert.route}</Text>
+              <Text style={s.mutedSm}>{alert.time}</Text>
+            </View>
+            <Text style={s.alertIssue}>{alert.issue}</Text>
+            <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600', marginTop: 4 }}>+{alert.points} pts for reporter</Text>
+          </View>
+        ))}
+        <TouchableOpacity style={s.btnOrange} onPress={() => setShowReportIssue(true)}>
+          <Text style={s.btnText}>Report an Issue (+20 pts)</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Smart Routine Reminder */}
+      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
+        <View style={[s.row, { marginBottom: 10 }]}>
+          <Text style={s.iconMd}>🧠</Text>
+          <Text style={s.sectionTitle}>Smart Routine Reminder</Text>
+        </View>
+        <View style={s.reminderBox}>
+          <View style={s.row}>
+            <Text style={{ fontSize: 22, marginRight: 10 }}>⏰</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13, marginBottom: 2 }}>Your Regular Route Detected</Text>
+              <Text style={s.mutedSm}>Route 915 at 8:10 AM • Weekdays</Text>
+              <View style={s.quoteBox}>
+                <Text style={s.mutedSm}>💬 "Leave in 5 minutes to catch your usual 8:10 AM bus"</Text>
+              </View>
+              <Text style={s.mutedSm}>We noticed you take this route regularly. Would you like automatic reminders?</Text>
+            </View>
+          </View>
+        </View>
+        <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
+          <TouchableOpacity style={[s.btnHalf, s.btnGray]}>
+            <Text style={s.btnGrayText}>Not Now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.btnHalf, s.btnGreen]}>
+            <Text style={s.btnText}>Enable Reminders</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={s.divider} />
+        <Text style={[s.mutedSm, { marginBottom: 4 }]}>✨ Smart features:</Text>
+        {['Calculates walking time to your stop', 'Adjusts for weather delays', 'Considers snow-day reports', 'Works with radius-based alerts'].map((f, i) => (
+          <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {f}</Text>
+        ))}
+      </View>
+
+      {/* Weekly Challenge */}
+      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
+        <View style={s.rowBetween}>
+          <Text style={s.sectionTitle}>Weekly Challenge</Text>
+          <Text style={{ fontSize: 22 }}>🎯</Text>
+        </View>
+        <Text style={{ fontWeight: '600', color: '#374151', fontSize: 14, marginTop: 6 }}>Peak Avoider</Text>
+        <Text style={s.mutedSm}>Take 5 off-peak rides (+10 pts each)</Text>
+        <View style={[s.row, { marginTop: 10 }]}>
+          <View style={s.progressTrack}>
+            <View style={[s.progressBar, { width: '60%' }]} />
+          </View>
+          <Text style={{ fontWeight: '700', color: '#374151', marginLeft: 8 }}>3/5</Text>
+        </View>
+        <Text style={[s.mutedSm, { marginTop: 6 }]}>🎁 +50 points bonus reward</Text>
+      </View>
+
+      {/* GPS Alerts */}
+      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
+        <View style={s.rowBetween}>
+          <View style={s.row}>
+            <Text style={s.iconMd}>📍</Text>
+            <Text style={s.sectionTitle}>Stop Approach Alerts</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowGpsSettings(true)}>
+            <Text style={{ color: GREEN, fontSize: 13, fontWeight: '500' }}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+        {gpsAlertEnabled ? (
+          <View>
+            <View style={s.gpsBadgeEnabled}>
+              <Text style={{ color: '#15803d', fontSize: 16, marginRight: 6 }}>✓</Text>
+              <Text style={{ color: '#15803d', fontWeight: '500', fontSize: 13 }}>Alerts enabled at {alertRadius}m</Text>
+            </View>
+            <Text style={[s.mutedSm, { marginTop: 4 }]}>Vibration, sound, and visual cues when approaching your stop</Text>
+          </View>
+        ) : (
+          <View>
+            <Text style={[s.mutedSm, { marginBottom: 10 }]}>Get notified when approaching your destination</Text>
+            <TouchableOpacity style={s.btnGreen} onPress={() => setShowGpsSettings(true)}>
+              <Text style={s.btnText}>Enable Alerts</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Recent Activity */}
+      <View style={[s.card, s.cardWhite, { marginBottom: 80 }]}>
+        <Text style={s.sectionTitle}>Recent Activity</Text>
+        <Text style={[s.mutedSm, { marginBottom: 10 }]}>Your last accessible ride</Text>
+        <View style={s.recentBox}>
+          <View>
+            <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }} numberOfLines={1} adjustsFontSizeToFit>Downtown → Durham college North campus</Text>
+            <Text style={s.mutedSm}>Route 915 • Platform 2</Text>
+            <Text style={{ color: '#15803d', fontWeight: '700', marginTop: 4 }}>+15 pts</Text>
+          </View>
+          <View style={[s.row, { marginTop: 6, flexWrap: 'wrap' }]}>
+            <Text style={s.mutedSm}>♿ Accessible route bonus</Text>
+            <Text style={[s.mutedSm, { marginHorizontal: 4 }]}>•</Text>
+            <Text style={s.mutedSm}>2 hours ago</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <Text style={[s.sectionTitle, { marginTop: 16, marginBottom: 10 }]}>Quick Actions</Text>
+        <View style={s.grid2}>
+          {[
+            { icon: '🚇', label: 'Plan Route', sub: '+5-15 pts', action: () => setTab('routes'), color: DARK_GREEN },
+            { icon: '🎁', label: 'Rewards', sub: 'Redeem', action: () => setTab('rewards'), color: DARK_GREEN },
+            { icon: '📝', label: 'Report Issue', sub: '+20 pts', action: () => setShowReportIssue(true), color: '#d1d5db' },
+            { icon: '🏅', label: 'Achievements', sub: 'View all', action: () => setTab('achievements'), color: '#d1d5db' },
+          ].map((item, i) => (
+            <TouchableOpacity key={i} style={[s.quickAction, { borderColor: item.color }]} onPress={item.action}>
+              <Text style={{ fontSize: 24, marginBottom: 4 }}>{item.icon}</Text>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>{item.label}</Text>
+              <Text style={s.mutedSm}>{item.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  // ─── ROUTES TAB ────────────────────────────────────────────────────────────
+  const RoutesTab = () => (
+    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={[s.row, { marginBottom: 16 }]}>
+        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={s.pageTitle}>Route Options</Text>
+      </View>
+
+      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
+        <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
+          <View style={[s.row, { flex: 1, alignItems: 'center' }]}>
+            <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
+            <View style={{ marginLeft: 8 }}>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Downtown</Text>
+              <Text style={s.mutedSm}>Main Station</Text>
+            </View>
+          </View>
+          <Text style={{ color: '#9ca3af', fontSize: 16, marginHorizontal: 8 }}>→</Text>
+          <View style={[s.row, { flex: 1, alignItems: 'center', justifyContent: 'flex-end' }]}>
+            <View style={{ alignItems: 'flex-end', marginRight: 8 }}>
+              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Durham college{'\n'}North campus</Text>
+              <Text style={s.mutedSm}>Campus Stop</Text>
+            </View>
+            <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
+          </View>
+        </View>
+      </View>
+
+      {routes.map(route => {
+        const cs = crowdingStyle(route.crowding);
+        const selected = selectedRoute?.id === route.id;
+        return (
+          <TouchableOpacity
+            key={route.id}
+            style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
+            onPress={() => selectRoute(route)}
+          >
+            <View style={s.rowBetween}>
+              <View>
+                <View style={s.row}>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: '#111827' }}>{route.time}</Text>
+                  {route.accessible && <Text style={{ fontSize: 18, marginLeft: 6 }}>♿</Text>}
+                </View>
+                <Text style={s.mutedSm}>{route.line} • Express</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: GREEN, fontWeight: '700' }}>+{route.pts} pts</Text>
+                <Text style={[s.mutedSm, { marginTop: 2, textTransform: 'capitalize' }]}>{route.crowding} crowd</Text>
+              </View>
+            </View>
+            <View style={[s.row, { marginTop: 10, flexWrap: 'wrap', gap: 6 }]}>
+              {route.accessible && (
+                <View style={[s.badge, { backgroundColor: '#dcfce7' }]}>
+                  <Text style={{ color: '#15803d', fontSize: 11, fontWeight: '600' }}>Accessible (+15 pts)</Text>
+                </View>
+              )}
+              <View style={[s.badge, { backgroundColor: cs.bg }]}>
+                <Text style={{ color: cs.text, fontSize: 11, fontWeight: '600' }}>{crowdingEmoji(route.crowding)} {route.crowding}</Text>
+              </View>
+            </View>
+            {selected && (
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                <TouchableOpacity style={s.btnGreen}>
+                  <Text style={s.btnText}>Start Navigation</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+      <View style={{ height: 80 }} />
+    </ScrollView>
+  );
+
+  // ─── REWARDS TAB ───────────────────────────────────────────────────────────
+  const RewardsTab = () => (
+    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={[s.row, { marginBottom: 16 }]}>
+        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={s.pageTitle}>Local Business Rewards</Text>
+      </View>
+
+      <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
+        <View style={s.rowBetween}>
+          <View>
+            <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>{points}</Text>
+            <Text style={{ color: '#bbf7d0', fontSize: 13 }}>Total Points</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff' }}>⚡{streak}</Text>
+            <Text style={{ color: '#bbf7d0', fontSize: 12 }}>Day Streak</Text>
+          </View>
+        </View>
+        <View style={[s.row, { marginTop: 14, gap: 8 }]}>
+          {[{ icon: '🏆', label: 'Level 5' }, { icon: '🎖️', label: '12 Badges' }, { icon: '📈', label: 'Top 15%' }].map((item, i) => (
+            <View key={i} style={s.statBadge}>
+              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+              <Text style={{ fontSize: 11, color: '#fff', marginTop: 4 }}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {rewards.map(reward => (
+        <View key={reward.id} style={[s.card, s.cardWhite, { marginBottom: 10, opacity: reward.claimed ? 0.6 : 1 }]}>
+          <View style={s.row}>
+            <Text style={{ fontSize: 34, marginRight: 12 }}>{reward.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '700', color: '#111827' }}>{reward.name}</Text>
+              <Text style={{ color: GREEN, fontWeight: '600', fontSize: 13 }}>{reward.offer}</Text>
+              <Text style={s.mutedSm}>{reward.pts} points required</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                s.redeemBtn,
+                reward.claimed || points < reward.pts ? s.redeemBtnDisabled : s.redeemBtnActive,
+              ]}
+              onPress={() => redeem(reward)}
+              disabled={reward.claimed || points < reward.pts}
+            >
+              <Text style={[s.redeemBtnText, (reward.claimed || points < reward.pts) && { color: '#9ca3af' }]}>
+                {reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+      <View style={{ height: 80 }} />
+    </ScrollView>
+  );
+
+  // ─── ACHIEVEMENTS TAB ──────────────────────────────────────────────────────
+  const AchievementsTab = () => (
+    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={[s.row, { marginBottom: 16 }]}>
+        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={s.pageTitle}>Achievements & Badges</Text>
+      </View>
+
+      {achievements.map(achievement => {
+        const pct = (achievement.progress / achievement.total) * 100;
+        const done = achievement.progress >= achievement.total;
+        return (
+          <View key={achievement.id} style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: done ? 2 : 1, borderColor: done ? GREEN : '#e5e7eb' }]}>
+            <View style={[s.row, { marginBottom: 10 }]}>
+              <Text style={{ fontSize: 34, marginRight: 12, opacity: done ? 1 : 0.4 }}>{achievement.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={s.row}>
+                  <Text style={{ fontWeight: '700', color: '#111827', marginRight: 6 }}>{achievement.name}</Text>
+                  {done && <Text style={{ color: '#22c55e' }}>✓</Text>}
+                </View>
+                <Text style={s.mutedSm}>{achievement.desc}</Text>
+              </View>
+            </View>
+            <View style={s.rowBetween}>
+              <Text style={s.mutedSm}>Progress</Text>
+              <Text style={{ fontWeight: '700', color: done ? GREEN : '#6b7280', fontSize: 13 }}>{achievement.progress}/{achievement.total}</Text>
+            </View>
+            <View style={s.progressTrack}>
+              <View style={[s.progressBar, { width: `${pct}%`, backgroundColor: done ? GREEN : '#9ca3af' }]} />
+            </View>
+          </View>
+        );
+      })}
+      <View style={{ height: 80 }} />
+    </ScrollView>
+  );
+
+  // ─── REPORT ISSUE MODAL ────────────────────────────────────────────────────
+  const IssueOption = ({ value, label, sub, icon }) => (
+    <TouchableOpacity
+      style={[s.radioRow, issueType === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
+      onPress={() => setIssueType(value)}
+    >
+      <View style={[s.radioCircle, issueType === value && { borderColor: GREEN }]}>
+        {issueType === value && <View style={s.radioDot} />}
+      </View>
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>{label}</Text>
+        <Text style={s.mutedSm}>{sub}</Text>
+      </View>
+      <Text style={{ fontSize: 20 }}>{icon}</Text>
+    </TouchableOpacity>
+  );
+
+  // ─── GPS SETTINGS MODAL ────────────────────────────────────────────────────
+  const RadiusOption = ({ value, label }) => (
+    <TouchableOpacity
+      style={[s.radioRow, alertRadius === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
+      onPress={() => setAlertRadius(value)}
+    >
+      <View style={[s.radioCircle, alertRadius === value && { borderColor: GREEN }]}>
+        {alertRadius === value && <View style={s.radioDot} />}
+      </View>
+      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{value} meters</Text>
+      <Text style={s.mutedSm}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const AlertTypeRow = ({ icon, label }) => (
+    <View style={[s.radioRow, { borderColor: '#e5e7eb' }]}>
+      <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
+      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', fontSize: 13 }}>{label}</Text>
+      <Switch value={true} trackColor={{ true: GREEN }} />
+    </View>
+  );
+
+  // ─── HOW IT WORKS MODAL ────────────────────────────────────────────────────
+  const DiagramStep = ({ num, title, desc, detail }) => (
+    <View>
+      <View style={s.stepRow}>
+        <View style={s.stepCircle}>
+          <Text style={s.stepNum}>{num}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>{title}</Text>
+          <Text style={[s.mutedSm, { marginBottom: 6 }]}>{desc}</Text>
+          <View style={s.detailBox}>
+            <Text style={{ fontSize: 11, color: '#374151' }}>{detail}</Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ alignItems: 'center', marginVertical: 8 }}>
+        <Text style={{ color: GREEN, fontSize: 20 }}>↓</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={s.safeArea}>
+      <StatusBar backgroundColor={GREEN} barStyle="light-content" />
+
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.rowBetween}>
+          <View>
+            <Text style={s.headerTitle}>AccessRide</Text>
+            <Text style={s.headerSub}>Inclusive Transit Companion</Text>
+          </View>
+          <TouchableOpacity style={s.howBtn} onPress={() => setShowDiagram(true)}>
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>ℹ️ How it works</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Main Content */}
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        {tab === 'home' && <HomeTab />}
+        {tab === 'routes' && <RoutesTab />}
+        {tab === 'rewards' && <RewardsTab />}
+        {tab === 'achievements' && <AchievementsTab />}
+      </View>
+
+      {/* Bottom Nav */}
+      <View style={s.bottomNav}>
+        {[
+          { key: 'home', icon: '🏠', label: 'Home' },
+          { key: 'routes', icon: '🚇', label: 'Routes' },
+          { key: 'rewards', icon: '🎁', label: 'Rewards' },
+          { key: 'achievements', icon: '🏆', label: 'Badges' },
+        ].map(item => (
+          <TouchableOpacity
+            key={item.key}
+            style={[s.navItem, tab === item.key && s.navItemActive]}
+            onPress={() => setTab(item.key)}
+          >
+            <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+            <Text style={[s.navLabel, tab === item.key && { color: '#fff' }]}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Report Issue Modal */}
+      <Modal visible={showReportIssue} transparent animationType="fade" onRequestClose={() => setShowReportIssue(false)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowReportIssue(false)}>
+          <TouchableOpacity style={s.modalBox} activeOpacity={1}>
+            <Text style={s.modalTitle}>Report an Issue</Text>
+            <View style={[s.infoBanner, { backgroundColor: '#f0fdf4' }]}>
+              <Text style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Help your community by reporting issues</Text>
+              <Text style={{ fontSize: 11, color: '#15803d' }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
+            </View>
+            <IssueOption value="bus-missed" label="Bus didn't arrive" sub="Snow, delays, or cancellations" icon="🚫" />
+            <IssueOption value="wheelchair ramps-out" label="Wheelchair ramps out of service" sub="Accessibility barrier" icon="♿" />
+            <IssueOption value="crowding" label="Heavy crowding" sub="Difficult to board" icon="👥" />
+            <IssueOption value="other" label="Other issue" sub="Report another problem" icon="📝" />
+            <View style={[s.row, { marginTop: 16, gap: 10 }]}>
+              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowReportIssue(false)}>
+                <Text style={s.btnGrayText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.btnHalf, issueType ? s.btnGreen : s.btnGrayDisabled]}
+                onPress={submitIssueReport}
+                disabled={!issueType}
+              >
+                <Text style={[s.btnText, !issueType && { color: '#9ca3af' }]}>Submit Report</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Reward Modal */}
+      <Modal visible={!!showReward} transparent animationType="fade" onRequestClose={() => setShowReward(null)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowReward(null)}>
+          <TouchableOpacity style={[s.modalBox, { alignItems: 'center' }]} activeOpacity={1}>
+            <Text style={{ fontSize: 56, marginBottom: 12 }}>{showReward?.icon}</Text>
+            <Text style={s.modalTitle}>Reward Claimed!</Text>
+            <Text style={{ color: '#6b7280', marginBottom: 4 }}>{showReward?.name}</Text>
+            <Text style={{ color: GREEN, fontWeight: '700', fontSize: 17, marginBottom: 16 }}>{showReward?.offer}</Text>
+            <View style={[s.qrBox]}>
+              <View style={s.qrInner}>
+                <Text style={{ fontFamily: 'monospace', fontSize: 32, color: '#111827', textAlign: 'center' }}>▄▄▄▄▄{'\n'}█▄▄▄█</Text>
+                <Text style={[s.mutedSm, { marginTop: 8, textAlign: 'center' }]}>QR Code</Text>
+              </View>
+              <Text style={[s.mutedSm, { textAlign: 'center', marginTop: 6 }]}>Show this at {showReward?.name} to redeem</Text>
+            </View>
+            <TouchableOpacity style={[s.btnGreen, { backgroundColor: '#7c3aed', width: '100%', marginTop: 10 }]} onPress={() => setShowReward(null)}>
+              <Text style={s.btnText}>Done</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* GPS Settings Modal */}
+      <Modal visible={showGpsSettings} transparent animationType="fade" onRequestClose={() => setShowGpsSettings(false)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowGpsSettings(false)}>
+          <ScrollView style={[s.modalBox, { maxHeight: '85%' }]}>
+            <TouchableOpacity activeOpacity={1}>
+              <Text style={[s.modalTitle, { marginBottom: 14 }]}>Stop Approach Alert Settings</Text>
+              <View style={[s.infoBanner, { backgroundColor: '#eff6ff', marginBottom: 16 }]}>
+                <View style={s.row}>
+                  <Text style={{ fontSize: 22, marginRight: 10 }}>📍</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '600', color: '#1e3a5f', marginBottom: 4 }}>Radius-Based GPS Alert</Text>
+                    <Text style={{ fontSize: 12, color: '#1d4ed8' }}>Tracks your location and sends alerts at customizable distances when approaching your stop</Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={s.fieldLabel}>Alert Distance</Text>
+              <RadiusOption value={150} label="Early warning" />
+              <RadiusOption value={100} label="Recommended" />
+              <RadiusOption value={50} label="Last minute" />
+              <Text style={[s.fieldLabel, { marginTop: 14 }]}>Alert Types</Text>
+              <AlertTypeRow icon="📳" label="Vibration Alert" />
+              <AlertTypeRow icon="🔊" label="Sound Cue" />
+              <AlertTypeRow icon="💬" label="Visual Popup" />
+              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 14 }]}>
+                <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 6 }}>✨ Universal Design Benefits</Text>
+                {[
+                  'Helps visually impaired riders navigate confidently',
+                  'Reduces anxiety on unfamiliar routes',
+                  'Prevents missing stops when distracted',
+                  'Perfect for tourists and new riders',
+                  'Useful at night with low visibility',
+                  'Makes multitasking safer',
+                ].map((b, i) => <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {b}</Text>)}
+              </View>
+              <View style={[s.row, { marginTop: 16, marginBottom: 16, gap: 10 }]}>
+                <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowGpsSettings(false)}>
+                  <Text style={s.btnGrayText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={() => { setGpsAlertEnabled(true); setShowGpsSettings(false); }}>
+                  <Text style={s.btnText}>Enable Alerts</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* How It Works Modal */}
+      <Modal visible={showDiagram} transparent animationType="fade" onRequestClose={() => setShowDiagram(false)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowDiagram(false)}>
+          <ScrollView style={[s.modalBox, { maxHeight: '90%' }]}>
+            <TouchableOpacity activeOpacity={1}>
+              <Text style={[s.modalTitle, { marginBottom: 4 }]}>How AccessRide Works</Text>
+              <Text style={[s.mutedSm, { marginBottom: 20 }]}>An inclusive, gamified transit companion</Text>
+              <DiagramStep num="1" title="🧠 Smart Routine Reminder" desc="App learns your weekly habits and reminds you when to leave" detail={'Example: "Leave in 5 minutes to catch your usual 8:10 AM bus"'} />
+              <DiagramStep num="2" title="📍 Radius-Based GPS Alerts" desc="Get notified when approaching your stop at 150m, 100m, and 50m" detail="Alerts: Vibration, sound cues, visual popups" />
+              <DiagramStep num="3" title="🗺️ Accessible Route Planning" desc="Choose step-free, low-crowding, wheelchair-accessible routes" detail="Features: Real-time wheelchair ramps status, crowding levels, accessibility info" />
+              <DiagramStep num="4" title="🚨 Community Issue Reporting" desc="Report missed buses, accessibility barriers, help others in real-time" detail="Examples: Bus delays, wheelchair ramps outages, crowding alerts" />
+              <DiagramStep num="5" title="⭐ Earn Points & Rewards" desc="Collect points for positive transit habits" detail="Earn from: +5 per ride, +10 off-peak, +15 accessible routes, +20 issue reports" />
+              <View>
+                <View style={s.stepRow}>
+                  <View style={s.stepCircle}><Text style={s.stepNum}>6</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>🎁 Redeem at Local Businesses</Text>
+                    <Text style={[s.mutedSm, { marginBottom: 6 }]}>Exchange points for real rewards from community partners</Text>
+                    <View style={s.detailBox}><Text style={{ fontSize: 11, color: '#374151' }}>Rewards: Free coffee, restaurant discounts, museum passes, local shop coupons</Text></View>
+                  </View>
+                </View>
+              </View>
+              {/* Core Features Grid */}
+              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 20 }]}>
+                <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 10 }}>✨ Core Features</Text>
+                <View style={s.grid2}>
+                  {[
+                    ['🧠', 'Smart reminders'], ['📍', 'GPS stop alerts'],
+                    ['♿', 'Accessibility-first'], ['🚨', 'Community reports'],
+                    ['⚡', 'Daily streaks'], ['🎯', 'Weekly challenges'],
+                    ['🏆', 'Achievement badges'], ['🤝', 'Local partnerships'],
+                  ].map(([icon, label], i) => (
+                    <View key={i} style={[s.row, { width: '48%', marginBottom: 8 }]}>
+                      <Text style={{ fontSize: 16, marginRight: 6 }}>{icon}</Text>
+                      <Text style={{ fontSize: 12, color: '#374151' }}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <TouchableOpacity style={[s.btnGreen, { marginTop: 16, marginBottom: 16 }]} onPress={() => setShowDiagram(false)}>
+                <Text style={s.btnText}>Got it!</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableOpacity>
+      </Modal>
+    </SafeAreaView>
+  );
+};
+
+// ─── STYLES ─────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: GREEN },
+  header: { backgroundColor: GREEN, paddingHorizontal: 16, paddingVertical: 14 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  howBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+
+  tabContent: { flex: 1, paddingHorizontal: 14, paddingTop: 14 },
+
+  card: { borderRadius: 16, padding: 18, marginBottom: 0 },
+  cardWhite: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  gradientGreen: { backgroundColor: GREEN },
+
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
+  bigPoints: { fontSize: 34, fontWeight: '700', color: '#fff', marginBottom: 4 },
+
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginLeft: 6 },
+  pageTitle: { fontSize: 19, fontWeight: '700', color: '#111827' },
+  mutedSm: { fontSize: 11, color: '#6b7280' },
+
+  row: { flexDirection: 'row', alignItems: 'center' },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+  alertBox: { borderLeftWidth: 4, borderLeftColor: '#f97316', backgroundColor: '#fff7ed', borderRadius: 8, padding: 10, marginBottom: 8 },
+  alertRoute: { fontWeight: '600', color: '#111827', fontSize: 13 },
+  alertIssue: { fontSize: 11, color: '#374151' },
+
+  btnOrange: { backgroundColor: '#f97316', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  btnGreen: { backgroundColor: GREEN, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  btnGray: { backgroundColor: '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  btnGrayDisabled: { backgroundColor: '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  btnHalf: { flex: 1 },
+  btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  btnGrayText: { color: '#374151', fontWeight: '700', fontSize: 14 },
+
+  reminderBox: { backgroundColor: '#f5f3ff', borderRadius: 10, padding: 14, marginBottom: 10 },
+  quoteBox: { backgroundColor: '#fff', borderRadius: 8, padding: 8, marginVertical: 6 },
+  divider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 10 },
+
+  progressTrack: { flex: 1, height: 8, backgroundColor: '#e5e7eb', borderRadius: 99, overflow: 'hidden', marginTop: 6 },
+  progressBar: { height: 8, backgroundColor: '#22c55e', borderRadius: 99 },
+
+  grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  quickAction: { width: '48%', borderWidth: 2, borderRadius: 10, padding: 14, alignItems: 'flex-start' },
+
+  gpsBadgeEnabled: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', padding: 12, borderRadius: 10, marginTop: 8 },
+  recentBox: { borderLeftWidth: 4, borderLeftColor: '#22c55e', backgroundColor: '#f0fdf4', borderRadius: 8, padding: 14 },
+
+  dot: { width: 10, height: 10, borderRadius: 99 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+
+  statBadge: { flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: 10, alignItems: 'center' },
+  redeemBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  redeemBtnActive: { backgroundColor: GREEN },
+  redeemBtnDisabled: { backgroundColor: '#e5e7eb' },
+  redeemBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  radioRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#d1d5db', borderRadius: 10, padding: 12, marginBottom: 8 },
+  radioCircle: { width: 18, height: 18, borderRadius: 99, borderWidth: 2, borderColor: '#9ca3af', alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: GREEN },
+
+  bottomNav: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingVertical: 10, paddingHorizontal: 8, paddingBottom: 16 },
+  navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 10 },
+  navItemActive: { backgroundColor: GREEN },
+  navLabel: { fontSize: 11, fontWeight: '500', color: '#6b7280', marginTop: 2 },
+
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  modalBox: { backgroundColor: '#fff', borderRadius: 20, padding: 22, width: '100%', maxWidth: 480 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 12 },
+  infoBanner: { borderRadius: 10, padding: 14, marginBottom: 12 },
+  fieldLabel: { fontWeight: '600', color: '#111827', fontSize: 14, marginBottom: 8 },
+
+  stepRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  stepCircle: { width: 44, height: 44, borderRadius: 99, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  stepNum: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  detailBox: { backgroundColor: '#f9fafb', borderRadius: 8, padding: 10 },
+
+  iconMd: { fontSize: 20 },
+
+  qrBox: { backgroundColor: '#f3f4f6', borderRadius: 10, padding: 14, width: '100%', marginBottom: 8 },
+  qrInner: { backgroundColor: '#fff', padding: 24, borderRadius: 8, alignItems: 'center', marginBottom: 6 },
+});
+
+export default AccessRideApp;
