@@ -10,7 +10,12 @@ import {
   StatusBar,
   Switch,
   TextInput,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Dimensions
 } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 // ─── MINIMAL QR CODE GENERATOR ───────────────────────────────────────────────
 // Generates a visual QR-like grid from a string (simplified visual representation)
@@ -128,11 +133,210 @@ const AccessRideApp = () => {
     { id: 4, name: 'Transit Helper', desc: '7-day streak', icon: '⚡', progress: 5, total: 7 },
   ];
 
+  // ── Schedules state ──────────────────────────────────────────────────────────
+  const [schedules, setSchedules] = useState([]);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [schedLabel, setSchedLabel] = useState('My Commute');
+  const [schedDay, setSchedDay] = useState('Weekdays');
+  const [schedHour, setSchedHour] = useState('8');
+  const [schedMinute, setSchedMinute] = useState('00');
+  const [schedAmPm, setSchedAmPm] = useState('AM');
+  const [schedOrigin, setSchedOrigin] = useState('Downtown Station');
+  const [schedDest, setSchedDest] = useState('Durham College North');
+  
+  // ── Map & Location State ───────────────────────────────────────────────────────
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 43.897,
+    longitude: -78.865,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
+  const [mapStops, setMapStops] = useState([]); // Stops fetched from backend
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectingFor, setSelectingFor] = useState('origin'); // 'origin' or 'dest'
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [selectedPin, setSelectedPin] = useState(null); // The user's typed location pin
+
+  const availableStops = [
+    { name: 'Downtown Station', lat: 43.897, lon: -78.865 },
+    { name: 'Durham College North', lat: 43.945, lon: -78.896 },
+    { name: 'City Center', lat: 43.890, lon: -78.860 },
+    { name: 'Oshawa Centre', lat: 43.882, lon: -78.883 },
+  ];
+
+  const fetchSchedules = () => {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/schedules/`)
+      .then(res => res.json())
+      .then(data => setSchedules(data))
+      .catch(err => console.error("Error fetching schedules", err));
+  };
+
+  const saveSchedule = () => {
+    let hour = parseInt(schedHour);
+    if (!hour || isNaN(hour)) hour = 8;
+    if (schedAmPm === 'PM' && hour !== 12) hour += 12;
+    if (schedAmPm === 'AM' && hour === 12) hour = 0;
+    let min = parseInt(schedMinute) || 0;
+    const timeSinceMidnight = hour * 60 + min;
+
+    const originStop = availableStops.find(s => s.name === schedOrigin) || availableStops[0];
+    const destStop = availableStops.find(s => s.name === schedDest) || availableStops[1];
+
+    let recRoute = "Route 915";
+    let recBus = 101;
+    if (schedOrigin === 'Oshawa Centre' || schedDest === 'Oshawa Centre') {
+      recRoute = "Route 410";
+      recBus = 205;
+    } else if (schedOrigin === 'City Center' || schedDest === 'City Center') {
+      recRoute = "Route 901";
+      recBus = 308;
+    }
+
+    const payload = {
+      schedule_label: schedLabel,
+      origin_lat: originStop.lat, origin_lon: originStop.lon,
+      dest_lat: destStop.lat, dest_lon: destStop.lon,
+      origin_stop_id: null, dest_stop_id: null,
+      scheduled_days: schedDay,
+      scheduled_time: timeSinceMidnight,
+      repeating: true,
+      recommended_route_id: recRoute,
+      recommended_bus_id: recBus,
+    };
+
+    const url = editingScheduleId 
+      ? `${process.env.EXPO_PUBLIC_API_URL}/schedules/${editingScheduleId}`
+      : `${process.env.EXPO_PUBLIC_API_URL}/schedules/`;
+    const method = editingScheduleId ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(() => {
+      fetchSchedules();
+      setShowScheduleModal(false);
+    })
+    .catch(err => console.error("Error saving schedule", err));
+  };
+
+  const deleteSchedule = (id) => {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/schedules/${id}`, { method: 'DELETE' })
+      .then(() => fetchSchedules())
+      .catch(err => console.error("Error deleting schedule", err));
+  };
+
+  // ── Map & Search Action Handlers ──────────────────────────────────────────────
+  const handleSearchTyping = async (text) => {
+    setSearchQuery(text);
+    if (text.length > 2) {
+      try {
+        // Photon API for open-source autocomplete centered roughly on Durham Region
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lat=43.897&lon=-78.865&limit=5`);
+        const data = await res.json();
+        setSearchResults(data.features || []);
+        setShowSearchDropdown(true);
+      } catch (err) {
+        console.error("Photon search error", err);
+      }
+    } else {
+      setShowSearchDropdown(false);
+      setSearchResults([]);
+    }
+  };
+
+  const selectSearchResult = async (feature) => {
+    const [lon, lat] = feature.geometry.coordinates;
+    const name = feature.properties.name || feature.properties.street || "Selected Location";
+    
+    setSearchQuery(name);
+    setShowSearchDropdown(false);
+    Keyboard.dismiss();
+
+    setSelectedPin({ lat, lon, name });
+    
+    // Animate map to new location
+    setMapRegion({
+      latitude: lat,
+      longitude: lon,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    });
+
+    // Fetch closest stops from our backend
+    try {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/stops/?lat=${lat}&lon=${lon}&limit=5`);
+      const stops = await res.json();
+      if (Array.isArray(stops)) {
+        setMapStops(stops);
+      } else {
+        console.error("Backend did not return an array of stops", stops);
+        setMapStops([]);
+      }
+    } catch (err) {
+      console.error("Error fetching closest stops", err);
+      setMapStops([]);
+    }
+  };
+
+  const setStopFromMap = (stop) => {
+    if (selectingFor === 'origin') {
+      setSchedOrigin(stop.stop_name);
+    } else {
+      setSchedDest(stop.stop_name);
+    }
+    // Briefly clear the map selections to show it was "saved"
+    setSearchQuery('');
+    setMapStops([]);
+    setSelectedPin(null);
+  };
+  
+  const openEditSchedule = (sched) => {
+    setEditingScheduleId(sched.id);
+    setSchedLabel(sched.schedule_label);
+    setSchedDay(sched.scheduled_days);
+    
+    const oStop = availableStops.find(s => Math.abs(s.lat - sched.origin_lat) < 0.001) || availableStops[0];
+    const dStop = availableStops.find(s => Math.abs(s.lat - sched.dest_lat) < 0.001) || availableStops[1];
+    setSchedOrigin(oStop.name);
+    setSchedDest(dStop.name);
+    
+    let totalMins = sched.scheduled_time;
+    let h = Math.floor(totalMins / 60);
+    let m = totalMins % 60;
+    
+    let ampm = h >= 12 ? 'PM' : 'AM';
+    let displayHour = h % 12;
+    if (displayHour === 0) displayHour = 12;
+    
+    setSchedHour(displayHour.toString());
+    setSchedMinute(m < 10 ? '0' + m : m.toString());
+    setSchedAmPm(ampm);
+    setShowScheduleModal(true);
+  };
+
+  const openNewSchedule = () => {
+    setEditingScheduleId(null);
+    setSchedLabel('My Commute');
+    setSchedDay('Weekdays');
+    setSchedHour('8');
+    setSchedMinute('00');
+    setSchedAmPm('AM');
+    setSchedOrigin('Downtown Station');
+    setSchedDest('Durham College North');
+    setShowScheduleModal(true);
+  };
+
   const [communityAlerts, setCommunityAlerts] = useState([]);
 
   const fetchCommunityAlerts = () => {
     // Connects to local IPv4 for physical device testing
-    fetch('http://10.160.33.215:8000/reports/')
+    // Change both fetch calls to this:
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/reports/`)
       .then(res => res.json())
       .then(data => {
         const formatted = data.map(item => ({
@@ -149,6 +353,7 @@ const AccessRideApp = () => {
 
   useEffect(() => {
     fetchCommunityAlerts();
+    fetchSchedules();
   }, []);
 
   const selectRoute = (route) => {
@@ -172,7 +377,7 @@ const AccessRideApp = () => {
   };
 
   const submitIssueReport = () => {
-    fetch('http://10.160.33.215:8000/reports/', {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/reports/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -182,13 +387,13 @@ const AccessRideApp = () => {
         stop_name: null
       })
     })
-    .then(res => res.json())
-    .then(data => {
-      setPoints(p => p + 20);
-      setReportStep('SUCCESS');
-      fetchCommunityAlerts();
-    })
-    .catch(err => console.error("Error submitting report", err));
+      .then(res => res.json())
+      .then(data => {
+        setPoints(p => p + 20);
+        setReportStep('SUCCESS');
+        fetchCommunityAlerts();
+      })
+      .catch(err => console.error("Error submitting report", err));
   };
 
   const closeReportModal = () => {
@@ -558,6 +763,56 @@ const AccessRideApp = () => {
     </View>
   );
 
+  // ─── SCHEDULES TAB ──────────────────────────────────────────────────────────
+  const SchedulesTab = () => (
+    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+      <View style={[s.rowBetween, { marginBottom: 16 }]}>
+        <Text style={s.pageTitle}>My Schedules</Text>
+        <TouchableOpacity style={s.btnGreen} onPress={openNewSchedule}>
+          <Text style={[s.btnText, { paddingHorizontal: 16 }]}>+ New</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {schedules.length === 0 ? (
+        <View style={{ alignItems: 'center', marginTop: 40 }}>
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
+          <Text style={[s.mutedSm, { textAlign: 'center' }]}>No schedules yet. Create one to get started!</Text>
+        </View>
+      ) : (
+        schedules.map(sched => {
+          let h = Math.floor(sched.scheduled_time / 60);
+          let m = sched.scheduled_time % 60;
+          let ampm = h >= 12 ? 'PM' : 'AM';
+          let displayHour = h % 12 || 12;
+          let timeString = `${displayHour}:${m < 10 ? '0'+m : m} ${ampm}`;
+          
+          return (
+            <View key={sched.id} style={[s.card, s.cardWhite, { marginBottom: 10 }]}>
+              <View style={s.rowBetween}>
+                <View>
+                  <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827' }}>{sched.schedule_label}</Text>
+                  <Text style={s.mutedSm}>{sched.scheduled_days} at {timeString}</Text>
+                  {sched.recommended_route_id && (
+                    <Text style={[s.mutedSm, { marginTop: 4, color: GREEN, fontWeight: '600' }]}>✨ Recommended: {sched.recommended_route_id}</Text>
+                  )}
+                </View>
+                <View style={[s.row, { gap: 14 }]}>
+                  <TouchableOpacity onPress={() => openEditSchedule(sched)}>
+                    <Text style={{ color: GREEN, fontWeight: '600' }}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => deleteSchedule(sched.id)}>
+                    <Text style={{ color: '#ef4444', fontWeight: '600' }}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          );
+        })
+      )}
+      <View style={{ height: 80 }} />
+    </ScrollView>
+  );
+
   // ─── HOW IT WORKS MODAL ────────────────────────────────────────────────────
   const DiagramStep = ({ num, title, desc, detail }) => (
     <View>
@@ -600,6 +855,7 @@ const AccessRideApp = () => {
       <View style={{ flex: 1, backgroundColor: BG }}>
         {tab === 'home' && <HomeTab />}
         {tab === 'routes' && <RoutesTab />}
+        {tab === 'schedules' && <SchedulesTab />}
         {tab === 'rewards' && <RewardsTab />}
         {tab === 'achievements' && <AchievementsTab />}
       </View>
@@ -609,6 +865,7 @@ const AccessRideApp = () => {
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'routes', icon: '🚇', label: 'Routes' },
+          { key: 'schedules', icon: '📅', label: 'Schedules' },
           { key: 'rewards', icon: '🎁', label: 'Rewards' },
           { key: 'achievements', icon: '🏆', label: 'Badges' },
         ].map(item => (
@@ -1053,6 +1310,176 @@ const AccessRideApp = () => {
             </ScrollView>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* Schedule Modal */}
+      <Modal visible={showScheduleModal} transparent animationType="fade" onRequestClose={() => setShowScheduleModal(false)}>
+        <KeyboardAvoidingView behavior="padding" style={s.overlay}>
+          <TouchableOpacity style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} activeOpacity={1} onPress={() => { Keyboard.dismiss(); setShowScheduleModal(false); }} />
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 40 }} style={{ width: '100%', maxWidth: 480 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <TouchableOpacity style={s.modalBox} activeOpacity={1}>
+              <Text style={s.modalTitle}>{editingScheduleId ? 'Edit Schedule' : 'New Schedule'}</Text>
+              
+              <Text style={[s.fieldLabel, { marginTop: 10 }]}>Schedule Name</Text>
+              <TextInput
+                style={[s.textInput, { height: 48, marginBottom: 16 }]}
+                value={schedLabel}
+                onChangeText={setSchedLabel}
+                placeholder="E.g. Morning Commute"
+              />
+
+              <Text style={s.fieldLabel}>Origin</Text>
+              <TouchableOpacity 
+                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]} 
+                onPress={() => setSelectingFor('origin')}
+              >
+                <Text style={{ color: selectingFor === 'origin' ? GREEN : '#111827', fontWeight: selectingFor === 'origin' ? '700' : '400' }}>
+                  {schedOrigin || "Select Origin"}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={s.fieldLabel}>Destination</Text>
+              <TouchableOpacity 
+                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]} 
+                onPress={() => setSelectingFor('dest')}
+              >
+                <Text style={{ color: selectingFor === 'dest' ? GREEN : '#111827', fontWeight: selectingFor === 'dest' ? '700' : '400' }}>
+                  {schedDest || "Select Destination"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Interactive Search & Map Area */}
+              <View style={{ marginBottom: 20, backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                <Text style={[s.fieldLabel, { fontSize: 13 }]}>Find {selectingFor === 'origin' ? 'Origin' : 'Destination'} 📍</Text>
+                
+                <TextInput
+                  style={[s.textInput, { height: 44, marginBottom: 8 }]}
+                  placeholder="Type an address to search..."
+                  value={searchQuery}
+                  onChangeText={handleSearchTyping}
+                />
+
+                {/* Autocomplete Dropdown */}
+                {showSearchDropdown && searchResults.length > 0 && (
+                  <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', maxHeight: 150, marginBottom: 8, overflow: 'hidden' }}>
+                    <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                      {searchResults.map((result, idx) => (
+                        <TouchableOpacity 
+                          key={idx} 
+                          style={{ padding: 12, borderBottomWidth: idx < searchResults.length - 1 ? 1 : 0, borderBottomColor: '#f3f4f6' }}
+                          onPress={() => selectSearchResult(result)}
+                        >
+                          <Text style={{ fontWeight: '600', color: '#111827' }}>{result.properties.name || result.properties.street || "Location"}</Text>
+                          <Text style={{ fontSize: 11, color: '#6b7280' }}>
+                            {[result.properties.city, result.properties.state].filter(Boolean).join(', ')}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Map View */}
+                <View style={{ height: 200, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#d1d5db' }}>
+                  <MapView
+                    style={{ flex: 1 }}
+                    region={mapRegion}
+                    onRegionChangeComplete={(reg) => {/* optional: reverse geocode on map drag */}}
+                  >
+                    {/* The Searched Pin */}
+                    {selectedPin && (
+                      <Marker 
+                        coordinate={{ latitude: selectedPin.lat, longitude: selectedPin.lon }} 
+                        pinColor="blue"
+                        title={selectedPin.name}
+                        description="Searched Location"
+                      />
+                    )}
+
+                    {/* The Closest Stops */}
+                    {mapStops.map((stop) => (
+                      <Marker
+                        key={`stop-${stop.stop_id}`}
+                        coordinate={{ latitude: stop.stop_lat, longitude: stop.stop_lon }}
+                        pinColor={stop.wheelchair_boarding === 1 ? "green" : "red"}
+                        title={stop.stop_name}
+                        description={stop.wheelchair_boarding === 1 ? "♿ Accessible Stop" : "⚠️ Accessibility Unknown/No"}
+                        onCalloutPress={() => setStopFromMap(stop)}
+                      />
+                    ))}
+                  </MapView>
+
+                  {/* Instructions Overlay */}
+                  {mapStops.length > 0 && (
+                     <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', padding: 8, borderRadius: 8 }}>
+                       <Text style={{ fontSize: 11, fontWeight: '600', textAlign: 'center' }}>Tap a bus stop pin to select it.</Text>
+                       <Text style={{ fontSize: 10, textAlign: 'center', color: '#6b7280' }}>Green pins = ♿ Accessible</Text>
+                     </View>
+                  )}
+                </View>
+              </View>
+
+              <Text style={s.fieldLabel}>Day</Text>
+              <View style={[s.row, { gap: 8, marginBottom: 16, flexWrap: 'wrap' }]}>
+              {['Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                <TouchableOpacity
+                  key={d}
+                  style={[s.badge, schedDay === d ? { backgroundColor: GREEN } : { backgroundColor: '#e5e7eb' }]}
+                  onPress={() => setSchedDay(d)}
+                >
+                  <Text style={{ color: schedDay === d ? '#fff' : '#374151', fontWeight: '600' }}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={s.fieldLabel}>Time</Text>
+            <View style={[s.row, { gap: 8, marginBottom: 24 }]}>
+              <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                <TextInput
+                  style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
+                  value={schedHour}
+                  onChangeText={h => setSchedHour(h.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+              </View>
+              <Text style={{ fontSize: 24, fontWeight: '700' }}>:</Text>
+              <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                <TextInput
+                  style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
+                  value={schedMinute}
+                  onChangeText={m => setSchedMinute(m.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+              </View>
+              <View style={[s.row, { backgroundColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }]}>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' }}
+                  onPress={() => setSchedAmPm('AM')}
+                >
+                  <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : '#6b7280' }}>AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' }}
+                  onPress={() => setSchedAmPm('PM')}
+                >
+                  <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : '#6b7280' }}>PM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={[s.row, { gap: 10 }]}>
+              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowScheduleModal(false)}>
+                <Text style={s.btnGrayText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
+                <Text style={s.btnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* How It Works Modal */}
