@@ -809,11 +809,11 @@ const AccessRideApp = () => {
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>
                 {settingsSection === 'appearance' ? '🎨 Appearance'
                   : settingsSection === 'account' ? '👤 Account & Security'
-                  : settingsSection === 'accessibility' ? '♿ Accessibility'
-                  : settingsSection === 'language' ? '🌐 Language & Region'
-                  : settingsSection === 'privacy' ? '🔒 Privacy'
-                  : settingsSection === 'support' ? '💬 Support'
-                  : '⚙️ Settings'}
+                    : settingsSection === 'accessibility' ? '♿ Accessibility'
+                      : settingsSection === 'language' ? '🌐 Language & Region'
+                        : settingsSection === 'privacy' ? '🔒 Privacy'
+                          : settingsSection === 'support' ? '💬 Support'
+                            : '⚙️ Settings'}
               </Text>
               <TouchableOpacity onPress={() => setShowSettings(false)}>
                 <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>✕</Text>
