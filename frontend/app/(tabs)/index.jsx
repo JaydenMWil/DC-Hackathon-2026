@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -128,10 +128,28 @@ const AccessRideApp = () => {
     { id: 4, name: 'Transit Helper', desc: '7-day streak', icon: '⚡', progress: 5, total: 7 },
   ];
 
-  const communityAlerts = [
-    { id: 1, route: 'Route 915', issue: "Bus didn't arrive - snow buildup", time: '15 min ago', points: 20 },
-    { id: 2, route: 'Route 920', issue: 'Wheelchair ramps out of service at Main Station', time: '1 hour ago', points: 20 },
-  ];
+  const [communityAlerts, setCommunityAlerts] = useState([]);
+
+  const fetchCommunityAlerts = () => {
+    // Connects to local IPv4 for physical device testing
+    fetch('http://10.160.33.215:8000/reports/')
+      .then(res => res.json())
+      .then(data => {
+        const formatted = data.map(item => ({
+          id: item.issue_id,
+          route: item.bus_name || item.stop_name || 'General',
+          issue: `${item.issue_type === 'bus-missed' ? "Bus didn't arrive" : item.issue_type === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : item.issue_type === 'crowding' ? "Heavy crowding" : item.issue_type === 'bike-rack-full' ? "Bike rack is full" : item.issue_type === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}${item.details ? ' - ' + item.details : ''}`,
+          time: new Date(item.timestamp + 'Z').toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true }),
+          points: 20
+        }));
+        setCommunityAlerts(formatted);
+      })
+      .catch(err => console.error("Error fetching alerts", err));
+  };
+
+  useEffect(() => {
+    fetchCommunityAlerts();
+  }, []);
 
   const selectRoute = (route) => {
     setSelectedRoute(route);
@@ -154,8 +172,23 @@ const AccessRideApp = () => {
   };
 
   const submitIssueReport = () => {
-    setPoints(p => p + 20);
-    setReportStep('SUCCESS');
+    fetch('http://10.160.33.215:8000/reports/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        issue_type: issueType,
+        details: issueDetails,
+        bus_name: 'Route 915', // Default since UI doesn't collect it yet
+        stop_name: null
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      setPoints(p => p + 20);
+      setReportStep('SUCCESS');
+      fetchCommunityAlerts();
+    })
+    .catch(err => console.error("Error submitting report", err));
   };
 
   const closeReportModal = () => {

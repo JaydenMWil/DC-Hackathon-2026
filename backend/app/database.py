@@ -46,6 +46,19 @@ def init_db():
         FOREIGN KEY (dest_stop_id) REFERENCES stops (stop_id)
     )
     ''')
+
+    # Create the issues table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS issues (
+        issue_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_type TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        details TEXT,
+        bus_name TEXT,
+        stop_name TEXT,
+        CHECK ((bus_name IS NOT NULL AND trim(bus_name) != '') OR (stop_name IS NOT NULL AND trim(stop_name) != ''))
+    )
+    ''')
     
     conn.commit()
     conn.close()

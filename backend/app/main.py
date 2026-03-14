@@ -1,7 +1,16 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import buses, alerts, rewards, reports, schedules
 
 app = FastAPI(title="BusAccess DC")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(buses.router, prefix="/buses", tags=["buses"])
 app.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
