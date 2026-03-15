@@ -28,6 +28,7 @@ import RoutesTab from '../../components/tabs/RoutesTab';
 import RewardsTab from '../../components/tabs/RewardsTab';
 import AchievementsTab from '../../components/tabs/AchievementsTab';
 import SchedulesTab from '../../components/tabs/SchedulesTab';
+import SmartRerouteModal from '../../components/tabs/SmartRerouteModal';
 import SettingsModal from '../../components/SettingsModal';
 import api from '../../components/api';
 import useProximityTracker from '../../components/hooks/useProximityTracker';
@@ -817,59 +818,17 @@ const MainApp = () => {
       />
 
       {/* Smart Reroute Modal */}
-      <Modal visible={showRerouteModal} transparent animationType="slide" onRequestClose={() => setShowRerouteModal(false)}>
-        <View style={s.overlay}>
-          <View style={[s.modalBox, { borderTopWidth: 8, borderTopColor: '#f97316' }]}>
-            <View style={[s.row, { marginBottom: 12 }]}>
-              <Text style={{ fontSize: 32, marginRight: 12 }}>⚠️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.modalTitle, { color: '#c2410c', marginBottom: 2 }]}>Accessibility Alert</Text>
-                <Text style={[s.mutedSm, { fontWeight: '700', color: '#f97316' }]}>ROUTE 915 ISSUE DETECTED</Text>
-              </View>
-            </View>
-            
-            <View style={[s.infoBanner, { backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74' }]}>
-              <Text style={{ fontSize: 14, color: '#9a3412', lineHeight: 20 }}>
-                A community report indicates the <Text style={{ fontWeight: '700' }}>wheelchair ramp</Text> on your usual Route 915 is currently out of service.
-              </Text>
-            </View>
-
-            <Text style={[s.fieldLabel, { marginTop: 16 }]}>Suggested Alternative</Text>
-            <View style={[s.card, s.cardWhite, { borderWidth: 2, borderColor: GREEN, marginBottom: 20 }]}>
-              <View style={s.rowBetween}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: theme.colors.text, fontSize: 16 }}>
-                    {alternativeRoute?.route_long_name || 'Alternative Route'}
-                  </Text>
-                  <Text style={s.mutedSm}>Departs in {alternativeRoute?.eta || '8 min'} • Platform 4</Text>
-                  <View style={[s.row, { marginTop: 6 }]}>
-                    <Text style={{ fontSize: 12, color: theme.colors.text }}>♿ Verified Accessible</Text>
-                  </View>
-                </View>
-                <Text style={{ fontSize: 28 }}>🚇</Text>
-              </View>
-            </View>
-
-            <View style={[s.row, { gap: 10 }]}>
-              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowRerouteModal(false)}>
-                <Text style={s.btnGrayText}>Dismiss</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[s.btnHalf, s.btnGreen]} 
-                onPress={() => {
-                  setTab('routes');
-                  setShowRerouteModal(false);
-                  setPoints(p => p + 10);
-                  // Auto-select for demo
-                  if (alternativeRoute) selectRoute(alternativeRoute);
-                }}
-              >
-                <Text style={s.btnText}>Switch & Earn +10 pts</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <SmartRerouteModal
+        visible={showRerouteModal}
+        alternativeRoute={alternativeRoute}
+        onClose={() => setShowRerouteModal(false)}
+        onSwitch={() => {
+          setTab('routes');
+          setShowRerouteModal(false);
+          setPoints(p => p + 10);
+          if (alternativeRoute) selectRoute(alternativeRoute);
+        }}
+      />
     </View>
   );
 };
