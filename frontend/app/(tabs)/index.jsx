@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,41 +11,60 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  Dimensions
+  Dimensions,
+  Alert,
+  Platform
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
-// ─── Local imports ───────────────────────────────────────────────────────────
-import { s, GREEN, BG } from '../../components/_styles';
-import { QRCode, crowdingStyle, crowdingEmoji, rewards, achievements } from '../../components/_helpers';
+// ─── Local imports (Updated paths) ───────────────────────────────────────────
+import { useStyles, GREEN, BG } from '../../core/_styles';
+import { ThemeProvider, useTheme } from '../../core/ThemeContext';
+import { QRCode, crowdingStyle, crowdingEmoji } from '../../core/_helpers';
+import { rewards, achievements, regularRouteStop, COMMUNITY_ALERTS_POINTS, ACCESSIBLE_ROUTE_POINTS, PROXIMITY_ALERT_BONUS } from '../../core/data';
 import * as Haptics from 'expo-haptics';
 import HomeTab from '../../components/tabs/HomeTab';
 import RoutesTab from '../../components/tabs/RoutesTab';
 import RewardsTab from '../../components/tabs/RewardsTab';
 import AchievementsTab from '../../components/tabs/AchievementsTab';
 import SchedulesTab from '../../components/tabs/SchedulesTab';
-import SettingsModal from '../../components/SettingsModal';
-import api from '../../components/api';
+import SmartRerouteModal from '../../components/modals/SmartRerouteModal';
+import SettingsModal from '../../components/modals/SettingsModal';
+import ReportIssueModal from '../../components/modals/ReportIssueModal';
+import GpsSettingsModal from '../../components/modals/GpsSettingsModal';
+import HowItWorksModal from '../../components/modals/HowItWorksModal';
+import api from '../../core/api';
 import useProximityTracker from '../../components/hooks/useProximityTracker';
 import ProximityAlertOverlay from '../../components/ProximityAlertOverlay';
 
 const AccessRideApp = () => {
   return (
     <SafeAreaProvider>
-      <MainApp />
+      <ThemeProvider>
+        <MainApp />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 };
 
 const MainApp = () => {
+  const { s, theme } = useStyles();
+  const {
+    colorMode, setColorMode,
+    fontSize, setFontSize,
+    highContrast, setHighContrast
+  } = useTheme();
+
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('home');
   const [points, setPoints] = useState(245);
   const [streak, setStreak] = useState(5);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [showReward, setShowReward] = useState(null);
+  const [redeemConfirm, setRedeemConfirm] = useState(null);
   const [gpsAlertEnabled, setGpsAlertEnabled] = useState(false);
   const [alertRadius, setAlertRadius] = useState(100);
   const [showGpsSettings, setShowGpsSettings] = useState(false);
@@ -55,6 +74,14 @@ const MainApp = () => {
   const [reportStep, setReportStep] = useState('SELECT_TYPE');
   const [issueDetails, setIssueDetails] = useState('');
   const [issueRoute, setIssueRoute] = useState('');
+
+  // ── Smart Reminder state ──────────────────────────────────────────────────
+  const [smartRemindersEnabled, setSmartRemindersEnabled] = useState(false);
+  const [safetyBuffer, setSafetyBuffer] = useState(5); // minutes
+  const [isSimulatingIssue, setIsSimulatingIssue] = useState(false);
+  const [showRerouteModal, setShowRerouteModal] = useState(false);
+  const [alternativeRoute, setAlternativeRoute] = useState(null);
+
 
   // ── Proximity Alert state ──────────────────────────────────────────────────
   const [vibrationAlert, setVibrationAlert] = useState(true);
@@ -67,9 +94,6 @@ const MainApp = () => {
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSection, setSettingsSection] = useState(null);
-  const [colorMode, setColorMode] = useState('system');
-  const [fontSize, setFontSize] = useState('medium');
-  const [highContrast, setHighContrast] = useState(false);
   const [profileName] = useState('Alex Johnson');
   const [profilePhone] = useState('+1 (905) 555-0142');
   const [profileEmail] = useState('alex.j@email.com');
@@ -91,6 +115,10 @@ const MainApp = () => {
   const [filterAccessible, setFilterAccessible] = useState(false);
   const [filterLimited, setFilterLimited] = useState(false);
 
+  // ── Schedules persistence state ─────────────────────────────────────────────
+  const [savedSchedules, setSavedSchedules] = useState([]);
+  const AS_KEY = 'ACCESS_RIDE_SCHEDULES';
+
   // ── Proximity Tracker Hook ────────────────────────────────────────────────
   const {
     isTracking,
@@ -109,7 +137,7 @@ const MainApp = () => {
       setProximityAlertVisible(true);
       // Award bonus points for first-time use
       if (!hasEarnedFirstAlertBonus) {
-        setPoints(p => p + 10);
+        setPoints(p => p + PROXIMITY_ALERT_BONUS);
         setHasEarnedFirstAlertBonus(true);
       }
     }
@@ -133,6 +161,38 @@ const MainApp = () => {
     await fetchLiveRoutes();
     setRefreshing(false);
   };
+
+  // ── Smart Reminder Logic ──────────────────────────────────────────────────
+  const walkingInfo = useMemo(() => {
+    if (!location || !smartRemindersEnabled) return null;
+    
+    // Distance in meters (simplified Euclidean for mock)
+    const dx = (location.coords.longitude - regularRouteStop.longitude) * 85000; // rough lon-to-meter
+    const dy = (location.coords.latitude - regularRouteStop.latitude) * 111000; // rough lat-to-meter
+    const distanceM = Math.sqrt(dx*dx + dy*dy);
+    
+    const walkingTimeMin = Math.round(distanceM / 80); // 80m/min pace
+    const totalBufferMin = walkingTimeMin + safetyBuffer;
+    
+    // Mock bus at 8:10 AM
+    return {
+      distanceM,
+      walkingTimeMin,
+      totalBufferMin,
+      timeToLeaveStr: `${totalBufferMin} minutes`
+    };
+  }, [location, smartRemindersEnabled, safetyBuffer]);
+
+  // Handle Reroute Simulation
+  useEffect(() => {
+    if (isSimulatingIssue && smartRemindersEnabled) {
+      // Find an alternative from live routes
+      const alt = liveRoutes.find(r => r.route_name !== '915' && r.accessible) || liveRoutes[0];
+      setAlternativeRoute(alt);
+      setShowRerouteModal(true);
+      setIsSimulatingIssue(false);
+    }
+  }, [isSimulatingIssue, smartRemindersEnabled, liveRoutes]);
 
   useEffect(() => {
     (async () => {
@@ -165,34 +225,78 @@ const MainApp = () => {
   const [communityAlerts, setCommunityAlerts] = useState([]);
 
   const fetchCommunityAlerts = () => {
-    api.getReports()
+    return api.getReports()
       .then(data => {
         const formatted = data.map(item => ({
           id: item.issue_id,
           route: item.route_name || item.bus_name || item.stop_name || 'General',
           issue: `${item.issue_type === 'bus-missed' ? "Bus didn't arrive" : item.issue_type === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : item.issue_type === 'crowding' ? "Heavy crowding" : item.issue_type === 'bike-rack-full' ? "Bike rack is full" : item.issue_type === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}${item.details ? ' - ' + item.details : ''}`,
           time: new Date(item.timestamp + 'Z').toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true }),
-          points: 20
+          points: COMMUNITY_ALERTS_POINTS
         }));
         setCommunityAlerts(formatted);
       })
       .catch(() => {});
   };
 
-  useEffect(() => {
-    fetchCommunityAlerts();
+  const onHomeRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchCommunityAlerts();
+    setRefreshing(false);
   }, []);
+
+  useEffect(() => {
+    if (tab === 'home') {
+      fetchCommunityAlerts();
+      // Poll for new reports every 30 seconds
+      const interval = setInterval(fetchCommunityAlerts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [tab]);
+
+  // ── Schedules Storage Effects ───────────────────────────────────────────────
+  useEffect(() => {
+    // Load on mount
+    const loadScheds = async () => {
+      try {
+        const val = await AsyncStorage.getItem(AS_KEY);
+        if (val) setSavedSchedules(JSON.parse(val));
+      } catch (e) {
+        console.error("Failed to load schedules", e);
+      }
+    };
+    loadScheds();
+  }, []);
+
+  useEffect(() => {
+    // Save on change
+    const saveScheds = async () => {
+      try {
+        await AsyncStorage.setItem(AS_KEY, JSON.stringify(savedSchedules));
+      } catch (e) {
+        console.error("Failed to save schedules", e);
+      }
+    };
+    saveScheds();
+  }, [savedSchedules]);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   const selectRoute = (route) => {
     setSelectedRoute(route);
-    if (route.accessible) setPoints(p => p + 15);
+    if (route.accessible) setPoints(p => p + ACCESSIBLE_ROUTE_POINTS);
   };
 
   const redeem = (reward) => {
     if (points >= reward.pts && !reward.claimed) {
-      setPoints(p => p - reward.pts);
-      setShowReward(reward);
+      setRedeemConfirm(reward);
+    }
+  };
+
+  const confirmRedeem = () => {
+    if (redeemConfirm && points >= redeemConfirm.pts) {
+      setPoints(p => p - redeemConfirm.pts);
+      setShowReward(redeemConfirm);
+      setRedeemConfirm(null);
     }
   };
 
@@ -201,28 +305,28 @@ const MainApp = () => {
       setReportStep('ENTER_DETAILS');
     } else if (reportStep === 'ENTER_DETAILS') {
       setReportStep('CONFIRM');
+    } else if (reportStep === 'CONFIRM') {
+      submitIssueReport();
     }
   };
 
   const submitIssueReport = () => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/reports/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        issue_type: issueType,
-        details: issueDetails,
-        route_name: issueRoute,
-        bus_name: issueRoute,
-        stop_name: null
-      })
+    api.createReport({
+      issue_type: issueType,
+      details: issueDetails,
+      route_name: issueRoute,
+      bus_name: issueRoute,
+      stop_name: null
     })
-      .then(res => res.json())
       .then(data => {
-        setPoints(p => p + 20);
+        setPoints(p => p + COMMUNITY_ALERTS_POINTS);
         setReportStep('SUCCESS');
         fetchCommunityAlerts();
       })
-      .catch(err => console.error("Error submitting report", err));
+      .catch(err => {
+        console.error("Error submitting report", err);
+        Alert.alert("Submission Failed", "Could not send report. Please check your connection.");
+      });
   };
 
   const handleOpenReport = () => {
@@ -249,74 +353,11 @@ const MainApp = () => {
     setTab(key);
   };
 
-  // ── Report Issue Modal Helpers ────────────────────────────────────────────
-  const IssueOption = ({ value, label, sub, icon }) => (
-    <TouchableOpacity
-      style={[s.radioRow, issueType === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
-      onPress={() => setIssueType(value)}
-    >
-      <View style={[s.radioCircle, issueType === value && { borderColor: GREEN }]}>
-        {issueType === value && <View style={s.radioDot} />}
-      </View>
-      <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>{label}</Text>
-        <Text style={s.mutedSm}>{sub}</Text>
-      </View>
-      <Text style={{ fontSize: 20 }}>{icon}</Text>
-    </TouchableOpacity>
-  );
-
-  // ── GPS Settings Modal Helpers ────────────────────────────────────────────
-  const RadiusOption = ({ value, label }) => (
-    <TouchableOpacity
-      style={[s.radioRow, alertRadius === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
-      onPress={() => setAlertRadius(value)}
-    >
-      <View style={[s.radioCircle, alertRadius === value && { borderColor: GREEN }]}>
-        {alertRadius === value && <View style={s.radioDot} />}
-      </View>
-      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{value} meters</Text>
-      <Text style={s.mutedSm}>{label}</Text>
-    </TouchableOpacity>
-  );
-
-  const AlertTypeRow = ({ icon, label, value, onChange }) => (
-    <View style={[s.radioRow, { borderColor: '#e5e7eb' }]}>
-      <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
-      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', fontSize: 13 }}>{label}</Text>
-      <Switch 
-        value={value} 
-        onValueChange={onChange}
-        trackColor={{ true: GREEN }} 
-      />
-    </View>
-  );
-
-  // ─── HOW IT WORKS MODAL ────────────────────────────────────────────────────
-  const DiagramStep = ({ num, title, desc, detail }) => (
-    <View>
-      <View style={s.stepRow}>
-        <View style={s.stepCircle}>
-          <Text style={s.stepNum}>{num}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>{title}</Text>
-          <Text style={[s.mutedSm, { marginBottom: 6 }]}>{desc}</Text>
-          <View style={s.detailBox}>
-            <Text style={{ fontSize: 11, color: '#374151' }}>{detail}</Text>
-          </View>
-        </View>
-      </View>
-      <View style={{ alignItems: 'center', marginVertical: 8 }}>
-        <Text style={{ color: GREEN, fontSize: 20 }}>↓</Text>
-      </View>
-    </View>
-  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: GREEN }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.headerBg }}>
       <SafeAreaView style={[s.safeArea, { backgroundColor: 'transparent' }]} edges={['right', 'left']}>
-      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
+      <StatusBar style={theme.isDark ? "light" : "light"} translucent={true} backgroundColor="transparent" />
       
         {/* Header */}
         <View style={[s.header, { paddingTop: insets.top + 14 }]}>
@@ -331,13 +372,13 @@ const MainApp = () => {
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
+            <Text style={{ color: theme.colors.textOnGreen, fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Main Content */}
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         {tab === 'home' && (
           <HomeTab 
             points={points} 
@@ -349,6 +390,15 @@ const MainApp = () => {
             isTracking={isTracking}
             distanceM={distanceM}
             trackedBus={trackedBus}
+            // Smart Reminder props
+            smartRemindersEnabled={smartRemindersEnabled}
+            setSmartRemindersEnabled={setSmartRemindersEnabled}
+            safetyBuffer={safetyBuffer}
+            setSafetyBuffer={setSafetyBuffer}
+            walkingInfo={walkingInfo}
+            setIsSimulatingIssue={setIsSimulatingIssue}
+            refreshing={refreshing}
+            onRefresh={onHomeRefresh}
           />
         )}
         {tab === 'routes' && (
@@ -370,14 +420,14 @@ const MainApp = () => {
             onStopTracking={stopTracking}
           />
         )}
-        {tab === 'schedules' && <SchedulesTab setTab={setTab} />}
+        {tab === 'schedules' && <SchedulesTab setTab={setTab} savedSchedules={savedSchedules} setSavedSchedules={setSavedSchedules} />}
         {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
         {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
       </View>
       </SafeAreaView>
 
       {/* Bottom Nav - outside SafeAreaView so it stretches to device bottom */}
-      <View style={[s.bottomNav, { paddingBottom: insets.bottom }]}>
+      <View style={[s.bottomNav, { paddingBottom: insets.bottom + 10 }]}>
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'routes', icon: '🚇', label: 'Routes' },
@@ -394,139 +444,70 @@ const MainApp = () => {
             accessibilityState={{ selected: tab === item.key }}
           >
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-            <Text style={[s.navLabel, tab === item.key && { color: '#fff' }]}>{item.label}</Text>
+            <Text style={[s.navLabel, tab === item.key && { color: theme.colors.textOnGreen }]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Report Issue Modal */}
-      <Modal visible={showReportIssue} transparent animationType="fade" onRequestClose={closeReportModal}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={closeReportModal}>
-          <TouchableOpacity style={s.modalBox} activeOpacity={1}>
-            {reportStep === 'SELECT_TYPE' && (
-              <>
-                <Text style={s.modalTitle}>Report an Issue</Text>
-                <View style={[s.infoBanner, { backgroundColor: '#f0fdf4' }]}>
-                  <Text style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Help your community by reporting issues</Text>
-                  <Text style={{ fontSize: 11, color: '#15803d' }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
-                </View>
-                <IssueOption value="bus-missed" label="Bus didn't arrive" sub="Snow, delays, or cancellations" icon="🚫" />
-                <IssueOption value="wheelchair ramps-out" label="Wheelchair ramps out of service" sub="Accessibility barrier" icon="♿" />
-                <IssueOption value="crowding" label="Heavy crowding" sub="Difficult to board" icon="👥" />
-                <IssueOption value="bike-rack-full" label="Bike rack is full" sub="No space available on the rack" icon="🚲" />
-                <IssueOption value="ramp-unsafe" label="Ramp landing not safe to descend" sub="Hazardous ramp condition reported" icon="⚠️" />
-                <IssueOption value="other" label="Other issue" sub="Report another problem" icon="📝" />
-                <View style={[s.row, { marginTop: 16, gap: 10 }]}>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={closeReportModal}>
-                    <Text style={s.btnGrayText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.btnHalf, issueType ? s.btnGreen : s.btnGrayDisabled]}
-                    onPress={handleReportNext}
-                    disabled={!issueType}
-                  >
-                    <Text style={[s.btnText, !issueType && { color: '#9ca3af' }]}>Next</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+      <ReportIssueModal
+        visible={showReportIssue}
+        step={reportStep}
+        issueType={issueType}
+        issueDetails={issueDetails}
+        issueRoute={issueRoute}
+        onClose={closeReportModal}
+        onNext={handleReportNext}
+        onBack={() => setReportStep(reportStep === 'CONFIRM' ? 'ENTER_DETAILS' : 'SELECT_TYPE')}
+        setIssueType={setIssueType}
+        setIssueDetails={setIssueDetails}
+        setIssueRoute={setIssueRoute}
+      />
 
-            {reportStep === 'ENTER_DETAILS' && (
-              <>
-                <Text style={s.modalTitle}>Provide Details</Text>
-                
-                <Text style={s.fieldLabel}>Which Route?</Text>
-                <View style={[s.row, { flexWrap: 'wrap', gap: 6, marginBottom: 8 }]}>
-                  {['915', '302', '900', '405'].map(r => (
-                    <TouchableOpacity 
-                      key={r} 
-                      style={[s.filterChip, issueRoute.includes(r) && s.filterChipActive]}
-                      onPress={() => setIssueRoute(`Route ${r}`)}
-                    >
-                      <Text style={[s.filterChipText, issueRoute.includes(r) && s.filterChipTextActive]}>{r}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TextInput
-                  style={[s.textInput, { height: 45, marginBottom: 12 }]}
-                  placeholder="Enter Route Name (e.g. Route 915)"
-                  placeholderTextColor="#9ca3af"
-                  value={issueRoute}
-                  onChangeText={setIssueRoute}
-                />
+      {/* GPS Settings Modal */}
+      <GpsSettingsModal
+        visible={showGpsSettings}
+        alertRadius={alertRadius}
+        vibrationAlert={vibrationAlert}
+        soundCueAlert={soundCueAlert}
+        visualPopupAlert={visualPopupAlert}
+        onClose={() => setShowGpsSettings(false)}
+        onEnableAlerts={() => { setGpsAlertEnabled(true); setShowGpsSettings(false); }}
+        setAlertRadius={setAlertRadius}
+        setVibrationAlert={setVibrationAlert}
+        setSoundCueAlert={setSoundCueAlert}
+        setVisualPopupAlert={setVisualPopupAlert}
+      />
 
-                <Text style={s.fieldLabel}>Issue Details</Text>
-                <TextInput
-                  style={s.textInput}
-                  multiline
-                  placeholder="E.g., North entrance ramp is blocked by snow..."
-                  placeholderTextColor="#9ca3af"
-                  value={issueDetails}
-                  onChangeText={text => setIssueDetails(text.slice(0, 200))}
-                  maxLength={200}
-                />
-                <Text style={[s.mutedSm, { textAlign: 'right', marginTop: 4, marginBottom: 16 }]}>
-                  {issueDetails.length}/200 characters
-                </Text>
-                <View style={[s.row, { gap: 10 }]}>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('SELECT_TYPE')}>
-                    <Text style={s.btnGrayText}>Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[s.btnHalf, (issueType && issueRoute) ? s.btnGreen : s.btnGrayDisabled]} 
-                    onPress={handleReportNext}
-                    disabled={!issueType || !issueRoute}
-                  >
-                    <Text style={[s.btnText, (!issueType || !issueRoute) && { color: '#9ca3af' }]}>Review</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+      {/* Reward Confirmation Modal */}
+      <Modal visible={!!redeemConfirm} transparent animationType="fade" onRequestClose={() => setRedeemConfirm(null)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setRedeemConfirm(null)}>
+          <View style={s.modalBox}>
+            <Text style={[s.modalTitle, { textAlign: 'center' }]}>Confirm Redemption?</Text>
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <Text style={{ fontSize: 64, marginBottom: 12 }}>{redeemConfirm?.icon}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>{redeemConfirm?.name}</Text>
+              <Text style={{ color: theme.colors.textSecondary }}>{redeemConfirm?.offer}</Text>
+            </View>
+            
+            <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(234,179,8,0.1)' : '#fefce8', alignItems: 'center', marginBottom: 20 }]}>
+              <Text style={{ color: theme.isDark ? '#facc15' : '#a16207', fontWeight: '700', fontSize: 16 }}>
+                Cost: {redeemConfirm?.pts} Points
+              </Text>
+              <Text style={{ color: theme.isDark ? '#eab308' : '#ca8a04', fontSize: 12, marginTop: 4 }}>
+                Balance after: {points - (redeemConfirm?.pts || 0)} pts
+              </Text>
+            </View>
 
-            {reportStep === 'CONFIRM' && (
-              <>
-                <Text style={s.modalTitle}>Confirm Report</Text>
-                <Text style={[s.mutedSm, { marginBottom: 16 }]}>Please review your report before submitting.</Text>
-                <View style={{ backgroundColor: '#f9fafb', padding: 14, borderRadius: 10, marginBottom: 16 }}>
-                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Issue Type</Text>
-                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-                    {issueType === 'bus-missed' ? "Bus didn't arrive" : issueType === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : issueType === 'crowding' ? "Heavy crowding" : issueType === 'bike-rack-full' ? "Bike rack is full" : issueType === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}
-                  </Text>
-                  
-                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Route</Text>
-                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>{issueRoute}</Text>
-
-                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Details</Text>
-                  <Text style={{ color: '#374151', fontSize: 13 }}>
-                    {issueDetails || 'No additional details provided.'}
-                  </Text>
-                </View>
-                <View style={[s.row, { gap: 10 }]}>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('ENTER_DETAILS')}>
-                    <Text style={s.btnGrayText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={submitIssueReport}>
-                    <Text style={s.btnText}>Submit Report</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {reportStep === 'SUCCESS' && (
-              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-                <Text style={{ fontSize: 56, marginBottom: 12 }}>🎉</Text>
-                <Text style={[s.modalTitle, { textAlign: 'center' }]}>Report Submitted!</Text>
-                <Text style={[s.mutedSm, { textAlign: 'center', marginBottom: 16 }]}>Thank you for helping keep the community informed.</Text>
-                <View style={[s.infoBanner, { backgroundColor: '#dcfce7', width: '100%', alignItems: 'center' }]}>
-                  <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18 }}>+20 Points</Text>
-                  <Text style={{ color: '#166534', fontSize: 12, marginTop: 4 }}>Added to your balance</Text>
-                </View>
-                <TouchableOpacity style={[s.btnGreen, { width: '100%', marginTop: 20 }]} onPress={closeReportModal}>
-                  <Text style={s.btnText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </TouchableOpacity>
+            <View style={[s.row, { gap: 10 }]}>
+              <TouchableOpacity style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} onPress={() => setRedeemConfirm(null)}>
+                <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={confirmRedeem}>
+                <Text style={s.btnText}>Confirm & Claim</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </TouchableOpacity>
       </Modal>
 
@@ -535,8 +516,8 @@ const MainApp = () => {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowReward(null)}>
           <TouchableOpacity style={[s.modalBox, { alignItems: 'center' }]} activeOpacity={1}>
             <Text style={{ fontSize: 56, marginBottom: 12 }}>{showReward?.icon}</Text>
-            <Text style={s.modalTitle}>Reward Claimed!</Text>
-            <Text style={{ color: '#6b7280', marginBottom: 4 }}>{showReward?.name}</Text>
+             <Text style={s.modalTitle}>Reward Claimed!</Text>
+            <Text style={{ color: theme.colors.textSecondary, marginBottom: 4 }}>{showReward?.name}</Text>
             <Text style={{ color: GREEN, fontWeight: '700', fontSize: 17, marginBottom: 16 }}>{showReward?.offer}</Text>
             <View style={[s.qrBox]}>
               <View style={s.qrInner}>
@@ -552,76 +533,11 @@ const MainApp = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* GPS Settings Modal */}
-      <Modal visible={showGpsSettings} transparent animationType="fade" onRequestClose={() => setShowGpsSettings(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowGpsSettings(false)}>
-          <ScrollView style={[s.modalBox, { maxHeight: '85%' }]}>
-            <TouchableOpacity activeOpacity={1}>
-              <Text style={[s.modalTitle, { marginBottom: 14 }]}>Stop Approach Alert Settings</Text>
-              <View style={[s.infoBanner, { backgroundColor: '#eff6ff', marginBottom: 16 }]}>
-                <View style={s.row}>
-                  <Text style={{ fontSize: 22, marginRight: 10 }}>📍</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '600', color: '#1e3a5f', marginBottom: 4 }}>Radius-Based GPS Alert</Text>
-                    <Text style={{ fontSize: 12, color: '#1d4ed8' }}>Tracks your location and sends alerts at customizable distances when approaching your stop</Text>
-                  </View>
-                </View>
-              </View>
-              <Text style={s.fieldLabel}>Alert Distance</Text>
-              <RadiusOption value={150} label="Early warning" />
-              <RadiusOption value={100} label="Recommended" />
-              <RadiusOption value={50} label="Last minute" />
-              <Text style={[s.fieldLabel, { marginTop: 14 }]}>Alert Types</Text>
-              <AlertTypeRow 
-                icon="📳" 
-                label="Vibration Alert" 
-                value={vibrationAlert} 
-                onChange={setVibrationAlert} 
-              />
-              <AlertTypeRow 
-                icon="🔊" 
-                label="Sound Cue" 
-                value={soundCueAlert} 
-                onChange={setSoundCueAlert} 
-              />
-              <AlertTypeRow 
-                icon="💬" 
-                label="Visual Popup" 
-                value={visualPopupAlert} 
-                onChange={setVisualPopupAlert} 
-              />
-              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 14 }]}>
-                <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 6 }}>✨ Universal Design Benefits</Text>
-                {[
-                  'Helps visually impaired riders navigate confidently',
-                  'Reduces anxiety on unfamiliar routes',
-                  'Prevents missing stops when distracted',
-                  'Perfect for tourists and new riders',
-                  'Useful at night with low visibility',
-                  'Makes multitasking safer',
-                ].map((b, i) => <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {b}</Text>)}
-              </View>
-              <View style={[s.row, { marginTop: 16, marginBottom: 16, gap: 10 }]}>
-                <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowGpsSettings(false)}>
-                  <Text style={s.btnGrayText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={() => { setGpsAlertEnabled(true); setShowGpsSettings(false); }}>
-                  <Text style={s.btnText}>Enable Alerts</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </ScrollView>
-        </TouchableOpacity>
-      </Modal>
-
       {/* Settings Modal */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
         <SettingsModal
           showSettings={showSettings} setShowSettings={setShowSettings}
           settingsSection={settingsSection} setSettingsSection={setSettingsSection}
-          colorMode={colorMode} setColorMode={setColorMode}
-          fontSize={fontSize} setFontSize={setFontSize}
-          highContrast={highContrast} setHighContrast={setHighContrast}
           profileName={profileName} profilePhone={profilePhone} profileEmail={profileEmail}
           wheelchairVehicle={wheelchairVehicle} setWheelchairVehicle={setWheelchairVehicle}
           textOnlyComms={textOnlyComms} setTextOnlyComms={setTextOnlyComms}
@@ -637,52 +553,12 @@ const MainApp = () => {
         />
       </Modal>
 
-
       {/* How It Works Modal */}
-      <Modal visible={showDiagram} transparent animationType="fade" onRequestClose={() => setShowDiagram(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowDiagram(false)}>
-          <ScrollView style={[s.modalBox, { maxHeight: '90%' }]}>
-            <TouchableOpacity activeOpacity={1}>
-              <Text style={[s.modalTitle, { marginBottom: 4 }]}>How AccessRide Works</Text>
-              <Text style={[s.mutedSm, { marginBottom: 20 }]}>An inclusive, gamified transit companion</Text>
-              <DiagramStep num="1" title="🧠 Smart Routine Reminder" desc="App learns your weekly habits and reminds you when to leave" detail={'Example: "Leave in 5 minutes to catch your usual 8:10 AM bus"'} />
-              <DiagramStep num="2" title="📍 Radius-Based GPS Alerts" desc="Get notified when approaching your stop at 150m, 100m, and 50m" detail="Alerts: Vibration, sound cues, visual popups" />
-              <DiagramStep num="3" title="🗺️ Accessible Route Planning" desc="Choose step-free, low-crowding, wheelchair-accessible routes" detail="Features: Real-time wheelchair ramps status, crowding levels, accessibility info" />
-              <DiagramStep num="4" title="🚨 Community Issue Reporting" desc="Report missed buses, accessibility barriers, help others in real-time" detail="Examples: Bus delays, wheelchair ramps outages, crowding alerts" />
-              <DiagramStep num="5" title="⭐ Earn Points & Rewards" desc="Collect points for positive transit habits" detail="Earn from: +5 per ride, +10 off-peak, +15 accessible routes, +20 issue reports" />
-              <View>
-                <View style={s.stepRow}>
-                  <View style={s.stepCircle}><Text style={s.stepNum}>6</Text></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>🎁 Redeem at Local Businesses</Text>
-                    <Text style={[s.mutedSm, { marginBottom: 6 }]}>Exchange points for real rewards from community partners</Text>
-                    <View style={s.detailBox}><Text style={{ fontSize: 11, color: '#374151' }}>Rewards: Free coffee, restaurant discounts, museum passes, local shop coupons</Text></View>
-                  </View>
-                </View>
-              </View>
-              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 20 }]}>
-                <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 10 }}>✨ Core Features</Text>
-                <View style={s.grid2}>
-                  {[
-                    ['🧠', 'Smart reminders'], ['📍', 'GPS stop alerts'],
-                    ['♿', 'Accessibility-first'], ['🚨', 'Community reports'],
-                    ['⚡', 'Daily streaks'], ['🎯', 'Weekly challenges'],
-                    ['🏆', 'Achievement badges'], ['🤝', 'Local partnerships'],
-                  ].map(([icon, label], i) => (
-                    <View key={i} style={[s.row, { width: '48%', marginBottom: 8 }]}>
-                      <Text style={{ fontSize: 16, marginRight: 6 }}>{icon}</Text>
-                      <Text style={{ fontSize: 12, color: '#374151' }}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-              <TouchableOpacity style={[s.btnGreen, { marginTop: 16, marginBottom: 16 }]} onPress={() => setShowDiagram(false)}>
-                <Text style={s.btnText}>Got it!</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </ScrollView>
-        </TouchableOpacity>
-      </Modal>
+      <HowItWorksModal
+        visible={showDiagram}
+        onClose={() => setShowDiagram(false)}
+      />
+
       {/* Proximity Alert Overlay */}
       <ProximityAlertOverlay
         visible={proximityAlertVisible}
@@ -690,6 +566,19 @@ const MainApp = () => {
         distance={proximityAlertData?.distance}
         onDismiss={() => setProximityAlertVisible(false)}
         onStopTracking={stopTracking}
+      />
+
+      {/* Smart Reroute Modal */}
+      <SmartRerouteModal
+        visible={showRerouteModal}
+        alternativeRoute={alternativeRoute}
+        onClose={() => setShowRerouteModal(false)}
+        onSwitch={() => {
+          setTab('routes');
+          setShowRerouteModal(false);
+          setPoints(p => p + 10);
+          if (alternativeRoute) selectRoute(alternativeRoute);
+        }}
       />
     </View>
   );

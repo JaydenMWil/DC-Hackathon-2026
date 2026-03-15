@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { GREEN } from './_styles';
+import { useStyles, GREEN } from '../core/_styles';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -19,6 +19,9 @@ const ProximityAlertOverlay = ({
   onStopTracking,
   autoDismissMs = 5000,
 }) => {
+  const { s, theme } = useStyles();
+  const c = theme.colors;
+
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -100,44 +103,44 @@ const ProximityAlertOverlay = ({
       : 'Bus';
 
   return (
-    <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
+    <Animated.View style={[localStyles.overlay, { backgroundColor: c.overlay, opacity: opacityAnim }]}>
       <Animated.View
-        style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
+        style={[s.modalBox, { alignItems: 'center', width: '100%', maxWidth: 380, transform: [{ scale: scaleAnim }] }]}
       >
         {/* Pulsing ring */}
-        <View style={styles.ringContainer}>
+        <View style={localStyles.ringContainer}>
           <Animated.View
             style={[
-              styles.pulseRing,
-              { transform: [{ scale: pulseAnim }] },
+              localStyles.pulseRing,
+              { borderColor: GREEN, transform: [{ scale: pulseAnim }] },
             ]}
           />
-          <View style={styles.innerCircle}>
-            <Text style={styles.busEmoji}>🚌</Text>
+          <View style={[localStyles.innerCircle, { backgroundColor: GREEN }]}>
+            <Text style={localStyles.busEmoji}>🚌</Text>
           </View>
         </View>
 
-        <Text style={styles.title}>Bus Approaching!</Text>
-        <Text style={styles.routeName}>{routeName}</Text>
-        <Text style={styles.distance}>
+        <Text style={[s.modalTitle, { textAlign: 'center' }]}>Bus Approaching!</Text>
+        <Text style={[localStyles.routeName, { color: GREEN }]}>{routeName}</Text>
+        <Text style={[localStyles.distance, { color: c.text }]}>
           ~{distance != null ? distance : '?'}m away
         </Text>
 
-        <Text style={styles.subtitle}>
+        <Text style={[localStyles.subtitle, { color: c.textSecondary }]}>
           Your bus is within your alert radius
         </Text>
 
-        <View style={styles.actions}>
+        <View style={s.row}>
           <TouchableOpacity
-            style={styles.dismissBtn}
+            style={[s.btnHalf, s.btnGray]}
             onPress={handleDismiss}
             accessibilityLabel="Dismiss alert"
             accessibilityRole="button"
           >
-            <Text style={styles.dismissText}>Dismiss</Text>
+            <Text style={s.btnGrayText}>Dismiss</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.stopBtn}
+            style={[s.btnHalf, s.btnGreen]}
             onPress={() => {
               handleDismiss();
               if (onStopTracking) onStopTracking();
@@ -145,7 +148,7 @@ const ProximityAlertOverlay = ({
             accessibilityLabel="Stop tracking this bus"
             accessibilityRole="button"
           >
-            <Text style={styles.stopText}>Stop Tracking</Text>
+            <Text style={s.btnText}>Stop Tracking</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -153,23 +156,13 @@ const ProximityAlertOverlay = ({
   );
 };
 
-const styles = StyleSheet.create({
+const localStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
     padding: 24,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 28,
-    width: '100%',
-    maxWidth: 380,
-    alignItems: 'center',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
   },
   ringContainer: {
     width: 110,
@@ -185,71 +178,31 @@ const styles = StyleSheet.create({
     borderRadius: 55,
     backgroundColor: 'rgba(0,118,71,0.15)',
     borderWidth: 3,
-    borderColor: GREEN,
   },
   innerCircle: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: GREEN,
     alignItems: 'center',
     justifyContent: 'center',
   },
   busEmoji: {
     fontSize: 32,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
   routeName: {
     fontSize: 16,
     fontWeight: '600',
-    color: GREEN,
     marginBottom: 2,
   },
   distance: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6b7280',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  dismissBtn: {
-    flex: 1,
-    backgroundColor: '#e5e7eb',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  dismissText: {
-    fontWeight: '700',
-    color: '#374151',
-    fontSize: 14,
-  },
-  stopBtn: {
-    flex: 1,
-    backgroundColor: GREEN,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  stopText: {
-    fontWeight: '700',
-    color: '#fff',
-    fontSize: 14,
   },
 });
 
