@@ -28,7 +28,12 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
           <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600', marginTop: 4 }}>+{alert.points} pts for reporter</Text>
         </View>
       ))}
-      <TouchableOpacity style={s.btnOrange} onPress={handleOpenReport}>
+      <TouchableOpacity 
+        style={s.btnOrange} 
+        onPress={handleOpenReport}
+        accessibilityLabel="Report an Issue, earn 20 points"
+        accessibilityRole="button"
+      >
         <Text style={s.btnText}>Report an Issue (+20 pts)</Text>
       </TouchableOpacity>
     </View>
@@ -53,10 +58,18 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
         </View>
       </View>
       <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
-        <TouchableOpacity style={[s.btnHalf, s.btnGray]}>
+        <TouchableOpacity 
+          style={[s.btnHalf, s.btnGray]}
+          accessibilityLabel="Not now"
+          accessibilityRole="button"
+        >
           <Text style={s.btnGrayText}>Not Now</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.btnHalf, s.btnGreen]}>
+        <TouchableOpacity 
+          style={[s.btnHalf, s.btnGreen]}
+          accessibilityLabel="Enable Reminders"
+          accessibilityRole="button"
+        >
           <Text style={s.btnText}>Enable Reminders</Text>
         </TouchableOpacity>
       </View>
@@ -91,7 +104,11 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
           <Text style={s.iconMd}>📍</Text>
           <Text style={s.sectionTitle}>Stop Approach Alerts</Text>
         </View>
-        <TouchableOpacity onPress={() => setShowGpsSettings(true)}>
+        <TouchableOpacity 
+          onPress={() => setShowGpsSettings(true)}
+          accessibilityLabel="Stop Approach Alert Settings"
+          accessibilityRole="button"
+        >
           <Text style={{ color: GREEN, fontSize: 13, fontWeight: '500' }}>Settings</Text>
         </TouchableOpacity>
       </View>
@@ -106,7 +123,12 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
       ) : (
         <View>
           <Text style={[s.mutedSm, { marginBottom: 10 }]}>Get notified when approaching your destination</Text>
-          <TouchableOpacity style={s.btnGreen} onPress={() => setShowGpsSettings(true)}>
+          <TouchableOpacity 
+            style={s.btnGreen} 
+            onPress={() => setShowGpsSettings(true)}
+            accessibilityLabel="Enable Stop Approach Alerts"
+            accessibilityRole="button"
+          >
             <Text style={s.btnText}>Enable Alerts</Text>
           </TouchableOpacity>
         </View>

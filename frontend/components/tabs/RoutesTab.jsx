@@ -10,7 +10,12 @@ const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRo
     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
   >
     <View style={[s.row, { marginBottom: 16 }]}>
-      <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+      <TouchableOpacity 
+        onPress={() => setTab('home')} 
+        style={{ marginRight: 10 }}
+        accessibilityLabel="Go back to Home"
+        accessibilityRole="button"
+      >
         <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
       </TouchableOpacity>
       <Text style={s.pageTitle}>Live Routes near you</Text>
@@ -21,12 +26,18 @@ const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRo
       <TouchableOpacity 
         style={[s.filterChip, filterAccessible && s.filterChipActive]} 
         onPress={() => setFilterAccessible(!filterAccessible)}
+        accessibilityLabel="Filter by Accessible routes"
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: filterAccessible }}
       >
         <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]}>♿ Accessible</Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[s.filterChip, filterLimited && s.filterChipActive]} 
         onPress={() => setFilterLimited(!filterLimited)}
+        accessibilityLabel="Show top 5 nearest routes"
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: filterLimited }}
       >
         <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]}>📍 Top 5</Text>
       </TouchableOpacity>
@@ -65,6 +76,9 @@ const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRo
             key={route.id}
             style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
             onPress={() => selectRoute(route)}
+            accessibilityLabel={`${route.route_long_name === 'Unknown Route' ? route.route_name : route.route_long_name}, arrival in ${route.eta}. ${route.accessible ? 'Accessible.' : ''}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selected }}
           >
             <View style={s.rowBetween}>
               <View style={{ flex: 1 }}>

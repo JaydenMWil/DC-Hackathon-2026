@@ -1,8 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
-import sqlite3
 from ..services.bus_tracking import calculate_distance
-from ..database import DB_PATH
+from ..database import get_db
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -20,12 +19,11 @@ def get_closest_stops(
     lat: float = Query(..., description="Latitude of the center point"),
     lon: float = Query(..., description="Longitude of the center point"),
     limit: int = Query(5, description="Number of closest stops to return"),
-    radius_km: float = Query(2.0, description="Search radius in kilometers")
+    radius_km: float = Query(2.0, description="Search radius in kilometers"),
+    db=Depends(get_db)
 ):
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        cursor = db.cursor()
 
         # Simple bounding box for SQLite optimization (approximate: 1 degree latitude ~ 111km)
         # 1 degree longitude varies, but 1 degree ~ 111km * cos(latitude)
@@ -44,7 +42,6 @@ def get_closest_stops(
         ''', (min_lat, max_lat, min_lon, max_lon))
         
         rows = cursor.fetchall()
-        conn.close()
 
         stops_with_distance = []
         for row in rows:

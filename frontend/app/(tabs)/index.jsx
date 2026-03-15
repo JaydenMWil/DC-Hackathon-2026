@@ -26,8 +26,7 @@ import RewardsTab from '../../components/tabs/RewardsTab';
 import AchievementsTab from '../../components/tabs/AchievementsTab';
 import SchedulesTab from '../../components/tabs/SchedulesTab';
 import SettingsModal from '../../components/SettingsModal';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.160.33.215:8000';
+import api from '../../components/api';
 
 const AccessRideApp = () => {
   const [tab, setTab] = useState('home');
@@ -78,11 +77,10 @@ const AccessRideApp = () => {
     if (!coords) return;
 
     try {
-      const resp = await fetch(`${BASE_URL}/buses/nearby?lat=${coords.coords.latitude}&lon=${coords.coords.longitude}`);
-      const data = await resp.json();
+      const data = await api.getBusesNearby(coords.coords.latitude, coords.coords.longitude);
       setLiveRoutes(data.buses || []);
     } catch (err) {
-      console.error("Error fetching live routes", err);
+      // Error is handled/alerted inside api.js, but we can log additionally if needed
     }
   };
 
@@ -123,8 +121,7 @@ const AccessRideApp = () => {
   const [communityAlerts, setCommunityAlerts] = useState([]);
 
   const fetchCommunityAlerts = () => {
-    fetch(`${BASE_URL}/reports/`)
-      .then(res => res.json())
+    api.getReports()
       .then(data => {
         const formatted = data.map(item => ({
           id: item.issue_id,
@@ -135,7 +132,7 @@ const AccessRideApp = () => {
         }));
         setCommunityAlerts(formatted);
       })
-      .catch(err => console.error("Error fetching alerts", err));
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -272,7 +269,12 @@ const AccessRideApp = () => {
             <Text style={s.headerTitle}>AccessRide</Text>
             <Text style={s.headerSub}>Inclusive Transit Companion</Text>
           </View>
-          <TouchableOpacity style={s.howBtn} onPress={() => { setShowSettings(true); setSettingsSection(null); }}>
+          <TouchableOpacity 
+            style={s.howBtn} 
+            onPress={() => { setShowSettings(true); setSettingsSection(null); }}
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
+          >
             <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
           </TouchableOpacity>
         </View>
@@ -300,6 +302,9 @@ const AccessRideApp = () => {
             key={item.key}
             style={[s.navItem, tab === item.key && s.navItemActive]}
             onPress={() => setTab(item.key)}
+            accessibilityLabel={`${item.label} tab`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === item.key }}
           >
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
             <Text style={[s.navLabel, tab === item.key && { color: '#fff' }]}>{item.label}</Text>

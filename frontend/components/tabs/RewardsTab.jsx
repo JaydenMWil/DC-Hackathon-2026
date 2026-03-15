@@ -5,7 +5,12 @@ import { s, GREEN } from '../_styles';
 const RewardsTab = ({ points, streak, rewards, redeem, setTab }) => (
   <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
     <View style={[s.row, { marginBottom: 16 }]}>
-      <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+      <TouchableOpacity 
+        onPress={() => setTab('home')} 
+        style={{ marginRight: 10 }}
+        accessibilityLabel="Go back to Home"
+        accessibilityRole="button"
+      >
         <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
       </TouchableOpacity>
       <Text style={s.pageTitle}>Local Business Rewards</Text>
@@ -48,6 +53,8 @@ const RewardsTab = ({ points, streak, rewards, redeem, setTab }) => (
             ]}
             onPress={() => redeem(reward)}
             disabled={reward.claimed || points < reward.pts}
+            accessibilityLabel={`${reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}: ${reward.name}, ${reward.offer}`}
+            accessibilityRole="button"
           >
             <Text style={[s.redeemBtnText, (reward.claimed || points < reward.pts) && { color: '#9ca3af' }]}>
               {reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}
