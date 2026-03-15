@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -225,7 +225,7 @@ const MainApp = () => {
   const [communityAlerts, setCommunityAlerts] = useState([]);
 
   const fetchCommunityAlerts = () => {
-    api.getReports()
+    return api.getReports()
       .then(data => {
         const formatted = data.map(item => ({
           id: item.issue_id,
@@ -239,9 +239,20 @@ const MainApp = () => {
       .catch(() => {});
   };
 
-  useEffect(() => {
-    fetchCommunityAlerts();
+  const onHomeRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchCommunityAlerts();
+    setRefreshing(false);
   }, []);
+
+  useEffect(() => {
+    if (tab === 'home') {
+      fetchCommunityAlerts();
+      // Poll for new reports every 30 seconds
+      const interval = setInterval(fetchCommunityAlerts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [tab]);
 
   // ── Schedules Storage Effects ───────────────────────────────────────────────
   useEffect(() => {
@@ -386,6 +397,8 @@ const MainApp = () => {
             setSafetyBuffer={setSafetyBuffer}
             walkingInfo={walkingInfo}
             setIsSimulatingIssue={setIsSimulatingIssue}
+            refreshing={refreshing}
+            onRefresh={onHomeRefresh}
           />
         )}
         {tab === 'routes' && (

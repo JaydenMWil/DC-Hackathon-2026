@@ -42,15 +42,17 @@ const SettingsModal = ({
               <Text style={{ color: '#fff', fontSize: 16 }}>← Back</Text>
             </TouchableOpacity>
           ) : <View style={{ width: 50 }} />}
-          <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700' }}>
-            {settingsSection === 'appearance' ? '🎨 Appearance'
-              : settingsSection === 'account' ? '👤 Account & Security'
-              : settingsSection === 'accessibility' ? '♿ Accessibility'
-              : settingsSection === 'language' ? '🌐 Language & Region'
-              : settingsSection === 'privacy' ? '🔒 Privacy'
-              : settingsSection === 'support' ? '💬 Support'
-              : '⚙️ Settings'}
-          </Text>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700', textAlign: 'center' }}>
+              {settingsSection === 'appearance' ? '🎨 Appearance'
+                : settingsSection === 'account' ? '👤 Account & Security'
+                : settingsSection === 'accessibility' ? '♿ Accessibility'
+                : settingsSection === 'language' ? '🌐 Language & Region'
+                : settingsSection === 'privacy' ? '🔒 Privacy'
+                : settingsSection === 'support' ? '💬 Support'
+                : '⚙️ Settings'}
+            </Text>
+          </View>
           <TouchableOpacity onPress={() => setShowSettings(false)}>
             <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>✕</Text>
           </TouchableOpacity>

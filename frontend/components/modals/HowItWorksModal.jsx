@@ -31,7 +31,7 @@ const HowItWorksModal = ({ visible, onClose }) => {
         <ScrollView style={[s.modalBox, { maxHeight: '90%' }]}>
           <TouchableOpacity activeOpacity={1}>
             <Text style={[s.modalTitle, { marginBottom: 4 }]}>How AccessRide Works</Text>
-            <Text style={[s.mutedSm, { marginBottom: 20 }]}>An inclusive, gamified transit companion</Text>
+            <Text style={[s.mutedSm, { marginBottom: 20, textAlign: 'center' }]}>An inclusive, gamified transit companion</Text>
             
             <DiagramStep num="1" title="🧠 Smart Routine Reminder" desc="App learns your weekly habits and reminds you when to leave" detail={'Example: "Leave in 5 minutes to catch your usual 8:10 AM bus"'} />
             <DiagramStep num="2" title="📍 Radius-Based GPS Alerts" desc="Get notified when approaching your stop at 150m, 100m, and 50m" detail="Alerts: Vibration, sound cues, visual popups" />

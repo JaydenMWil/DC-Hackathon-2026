@@ -89,7 +89,7 @@ const GpsSettingsModal = ({
                 'Perfect for tourists and new riders',
                 'Useful at night with low visibility',
                 'Makes multitasking safer',
-              ].map((b, i) => <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {b}</Text>)}
+              ].map((b, i) => <Text key={i} style={[s.mutedSm, { marginBottom: 3 }]}>• {b}</Text>)}
             </View>
 
             <View style={[s.row, { marginTop: 16, marginBottom: 16, gap: 10 }]}>

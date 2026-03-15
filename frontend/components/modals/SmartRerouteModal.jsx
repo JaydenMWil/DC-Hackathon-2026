@@ -14,12 +14,10 @@ const SmartRerouteModal = ({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.overlay}>
         <View style={[s.modalBox, { borderTopWidth: 8, borderTopColor: '#f97316' }]}>
-          <View style={[s.row, { marginBottom: 12 }]}>
-            <Text style={{ fontSize: 32, marginRight: 12 }}>⚠️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.modalTitle, { color: '#c2410c', marginBottom: 2 }]}>Accessibility Alert</Text>
-              <Text style={[s.mutedSm, { fontWeight: '700', color: '#f97316' }]}>ROUTE 915 ISSUE DETECTED</Text>
-            </View>
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 40, marginBottom: 8 }}>⚠️</Text>
+            <Text style={[s.modalTitle, { color: '#c2410c', marginBottom: 2 }]}>Accessibility Alert</Text>
+            <Text style={[s.mutedSm, { fontWeight: '700', color: '#f97316' }]}>ROUTE 915 ISSUE DETECTED</Text>
           </View>
           
           <View style={[s.infoBanner, { backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74' }]}>

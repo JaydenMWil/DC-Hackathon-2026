@@ -94,7 +94,7 @@ export function createStyles(theme) {
 
     overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
     modalBox: { backgroundColor: c.modalBg, borderRadius: 20, padding: 22, width: '100%', maxWidth: 480 },
-    modalTitle: { fontSize: f.heading, fontFamily: 'Lexend-Bold', color: c.text, marginBottom: 12 },
+    modalTitle: { fontSize: f.heading, fontFamily: 'Lexend-Bold', color: c.text, marginBottom: 12, textAlign: 'center' },
     infoBanner: { borderRadius: 10, padding: 14, marginBottom: 12 },
     fieldLabel: { fontFamily: 'Lexend-Bold', color: c.text, fontSize: f.button, marginBottom: 8 },
 

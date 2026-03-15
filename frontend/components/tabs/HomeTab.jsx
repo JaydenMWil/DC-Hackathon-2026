@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useStyles, GREEN } from '../../core/_styles';
 
 const HomeTab = ({ 
@@ -8,13 +8,25 @@ const HomeTab = ({
   // Smart Reminder props
   smartRemindersEnabled, setSmartRemindersEnabled,
   safetyBuffer, setSafetyBuffer,
-  walkingInfo, setIsSimulatingIssue
+  walkingInfo, setIsSimulatingIssue,
+  refreshing, onRefresh
 }) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 
   return (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={s.tabContent} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl 
+          refreshing={refreshing} 
+          onRefresh={onRefresh} 
+          tintColor={GREEN} 
+          colors={[GREEN]} 
+        />
+      }
+    >
 
       {/* Balance Card */}
       <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
