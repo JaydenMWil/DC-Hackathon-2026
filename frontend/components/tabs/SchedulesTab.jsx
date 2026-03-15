@@ -151,14 +151,16 @@ const SchedulesTab = React.forwardRef(({ setTab, savedSchedules = [], setSavedSc
     <>
       <ScrollView style={s.tabContent}>
         <View style={[s.rowBetween, { marginBottom: 14 }]}>
-          <Text style={s.pageTitle}>📅 My Schedules</Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={s.pageTitle} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>📅 My Schedules</Text>
+          </View>
           <TouchableOpacity 
             style={s.btnGreen} 
             onPress={() => { resetModal(); setShowScheduleModal(true); }}
             accessibilityLabel="Create new schedule"
             accessibilityRole="button"
           >
-            <Text style={[s.btnText, { paddingHorizontal: 12 }]}>+ New</Text>
+            <Text style={[s.btnText, { paddingHorizontal: 12 }]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>+ New</Text>
           </TouchableOpacity>
         </View>
         {savedSchedules.length === 0 ? (
@@ -171,7 +173,7 @@ const SchedulesTab = React.forwardRef(({ setTab, savedSchedules = [], setSavedSc
           <View key={sched.id} style={[s.cardWhite, s.card, { padding: 16, marginBottom: 10 }]}>
             <View style={s.rowBetween}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '700', color: c.text, fontSize: 22 }}>{sched.label}</Text>
+                <Text style={{ fontWeight: '700', color: c.text, fontSize: 22 }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>{sched.label}</Text>
                 <Text style={[s.mutedSm, { marginTop: 4 }]}>{sched.origin} → {sched.dest}</Text>
                 <Text style={[s.mutedSm]}>{sched.day} at {sched.time}</Text>
               </View>
@@ -190,13 +192,13 @@ const SchedulesTab = React.forwardRef(({ setTab, savedSchedules = [], setSavedSc
                 style={[s.row, { flex: 1, justifyContent: 'center', backgroundColor: c.inputBg, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: c.border }]}
                 onPress={() => handleEdit(sched)}
               >
-                <Text style={{ fontSize: 14, color: c.text, fontWeight: '500' }}>✏️ Edit</Text>
+                <Text style={{ fontSize: 14, color: c.text, fontWeight: '500' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>✏️ Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[s.row, { flex: 1, justifyContent: 'center', backgroundColor: c.dangerBg, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: c.dangerBorder }]}
                 onPress={() => handleDelete(sched.id)}
               >
-                <Text style={{ fontSize: 14, color: c.dangerText, fontWeight: '500' }}>🗑️ Delete</Text>
+                <Text style={{ fontSize: 14, color: c.dangerText, fontWeight: '500' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>🗑️ Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -417,10 +419,10 @@ const SchedulesTab = React.forwardRef(({ setTab, savedSchedules = [], setSavedSc
 
               <View style={[s.row, { gap: 10 }]}>
                 <TouchableOpacity style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} onPress={() => setShowScheduleModal(false)}>
-                  <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Cancel</Text>
+                  <Text style={theme.isDark ? s.btnText : s.btnGrayText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
-                  <Text style={s.btnText}>Save</Text>
+                  <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Save</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

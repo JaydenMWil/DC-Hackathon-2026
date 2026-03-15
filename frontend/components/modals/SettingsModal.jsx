@@ -49,7 +49,7 @@ const SettingsModal = ({
 
           {/* Center (Title) */}
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700', textAlign: 'center' }}>
+            <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700', textAlign: 'center' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>
               {settingsSection === 'appearance' ? 'Appearance'
                 : settingsSection === 'account' ? 'Account & Security'
                   : settingsSection === 'accessibility' ? 'Accessibility'
@@ -84,7 +84,7 @@ const SettingsModal = ({
                 <TouchableOpacity key={item.key} style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]} onPress={() => setSettingsSection(item.key)}>
                   <Text style={{ fontSize: f.iconLg, marginRight: 14 }}>{item.icon}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }}>{item.label}</Text>
+                    <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>{item.label}</Text>
                     <Text style={s.mutedSm}>{item.sub}</Text>
                   </View>
                   <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>

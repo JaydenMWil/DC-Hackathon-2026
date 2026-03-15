@@ -17,7 +17,7 @@ const AchievementsTab = React.forwardRef(({ achievements, setTab }, ref) => {
         >
           <Text style={{ color: c.textSecondary, fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
-        <Text style={s.pageTitle}>Achievements & Badges</Text>
+        <Text style={s.pageTitle} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Achievements & Badges</Text>
       </View>
 
       {achievements.map(achievement => {
@@ -29,7 +29,7 @@ const AchievementsTab = React.forwardRef(({ achievements, setTab }, ref) => {
               <Text style={{ fontSize: 34, marginRight: 12, opacity: done ? 1 : 0.4 }}>{achievement.icon}</Text>
               <View style={{ flex: 1 }}>
                 <View style={s.row}>
-                  <Text style={{ fontWeight: '700', color: c.text, marginRight: 6 }}>{achievement.name}</Text>
+                  <Text style={{ fontWeight: '700', color: c.text, marginRight: 6, flex: 1 }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>{achievement.name}</Text>
                   {done && <Text style={{ color: c.successText }}>✓</Text>}
                 </View>
                 <Text style={s.mutedSm}>{achievement.desc}</Text>
@@ -37,7 +37,7 @@ const AchievementsTab = React.forwardRef(({ achievements, setTab }, ref) => {
             </View>
             <View style={s.rowBetween}>
               <Text style={s.mutedSm}>Progress</Text>
-              <Text style={{ fontWeight: '700', color: done ? GREEN : c.textSecondary, fontSize: 13 }}>{achievement.progress}/{achievement.total}</Text>
+              <Text style={{ fontWeight: '700', color: done ? GREEN : c.textSecondary, fontSize: 13 }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>{achievement.progress}/{achievement.total}</Text>
             </View>
             <View style={s.progressTrack}>
               <View style={[s.progressBar, { width: `${pct}%`, backgroundColor: done ? GREEN : c.textSecondary }]} />

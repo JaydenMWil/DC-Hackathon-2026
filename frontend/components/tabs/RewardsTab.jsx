@@ -27,18 +27,18 @@ const RewardsTab = React.forwardRef(({ points, streak, rewards, redeem, setTab }
         >
           <Text style={{ color: c.textSecondary, fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
-        <Text style={s.pageTitle}>Local Business Rewards</Text>
+        <Text style={s.pageTitle} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Local Business Rewards</Text>
       </View>
 
       <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
         <View style={s.rowBetween}>
           <View>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>{points}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Total Points</Text>
+            <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>{points}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Total Points</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff' }}>⚡{streak}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>Day Streak</Text>
+          <View style={{ alignItems: 'flex-end', flex: 1 }}>
+            <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>⚡{streak}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Day Streak</Text>
           </View>
         </View>
         <View style={[s.row, { marginTop: 14, gap: 8 }]}>
@@ -96,7 +96,7 @@ const RewardsTab = React.forwardRef(({ points, streak, rewards, redeem, setTab }
               accessibilityLabel={`${reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}: ${reward.name}, ${reward.offer}`}
               accessibilityRole="button"
             >
-              <Text style={[s.redeemBtnText, (reward.claimed || points < reward.pts) && { color: c.textSecondary }]}>
+              <Text style={[s.redeemBtnText, (reward.claimed || points < reward.pts) && { color: c.textSecondary }]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>
                 {reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}
               </Text>
             </TouchableOpacity>
@@ -122,7 +122,7 @@ const RewardsTab = React.forwardRef(({ points, streak, rewards, redeem, setTab }
             {/* Gradient Header Mockup */}
             <View style={[s.gradientGreen, { padding: 24, alignItems: 'center' }]}>
               <Text style={{ fontSize: 50, marginBottom: 10 }}>🏆</Text>
-              <Text style={[s.modalTitle, { color: '#fff', marginBottom: 0 }]}>Level {currentLevel} Scholar</Text>
+              <Text style={[s.modalTitle, { color: '#fff', marginBottom: 0 }]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Level {currentLevel} Scholar</Text>
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '500' }}>
                 {points} / {pointsForNext} pts to Level {nextLevel}
               </Text>
@@ -155,7 +155,7 @@ const RewardsTab = React.forwardRef(({ points, streak, rewards, redeem, setTab }
                 style={[s.btnGreen, { marginTop: 30 }]} 
                 onPress={() => setShowLevelModal(false)}
               >
-                <Text style={s.btnText}>Keep Riding!</Text>
+                <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Keep Riding!</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -219,7 +219,7 @@ const RewardsTab = React.forwardRef(({ points, streak, rewards, redeem, setTab }
                 style={[s.btnGreen, { backgroundColor: '#064e3b' }]} 
                 onPress={() => setShowLeaderboardModal(false)}
               >
-                <Text style={s.btnText}>Awesome!</Text>
+                <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Awesome!</Text>
               </TouchableOpacity>
             </View>
           </View>
