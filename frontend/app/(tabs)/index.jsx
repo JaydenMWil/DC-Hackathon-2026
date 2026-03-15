@@ -55,6 +55,20 @@ const MainApp = () => {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('home');
   const [points, setPoints] = useState(245);
+  // Refs for scroll to top
+  const homeRef = React.useRef(null);
+  const routesRef = React.useRef(null);
+  const schedulesRef = React.useRef(null);
+  const rewardsRef = React.useRef(null);
+  const achievementsRef = React.useRef(null);
+
+  const tabRefs = {
+    home: homeRef,
+    routes: routesRef,
+    schedules: schedulesRef,
+    rewards: rewardsRef,
+    achievements: achievementsRef,
+  };
   const [streak, setStreak] = useState(5);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [showReward, setShowReward] = useState(null);
@@ -344,7 +358,16 @@ const MainApp = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
-    setTab(key);
+    
+    if (tab === key) {
+      // Repeat tap on active tab -> scroll to top
+      const activeRef = tabRefs[key];
+      if (activeRef?.current) {
+        activeRef.current.scrollTo({ y: 0, animated: true });
+      }
+    } else {
+      setTab(key);
+    }
   };
 
 
@@ -375,6 +398,7 @@ const MainApp = () => {
       <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         {tab === 'home' && (
           <HomeTab 
+            ref={homeRef}
             points={points} 
             communityAlerts={communityAlerts} 
             gpsAlertEnabled={gpsAlertEnabled} 
@@ -393,10 +417,12 @@ const MainApp = () => {
             setIsSimulatingIssue={setIsSimulatingIssue}
             refreshing={refreshing}
             onRefresh={onHomeRefresh}
+            setTab={setTab}
           />
         )}
         {tab === 'routes' && (
           <RoutesTab 
+            ref={routesRef}
             location={location} 
             filteredRoutes={filteredRoutes} 
             refreshing={refreshing} 
@@ -414,9 +440,9 @@ const MainApp = () => {
             onStopTracking={stopTracking}
           />
         )}
-        {tab === 'schedules' && <SchedulesTab setTab={setTab} savedSchedules={savedSchedules} setSavedSchedules={setSavedSchedules} />}
-        {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
-        {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
+        {tab === 'schedules' && <SchedulesTab ref={schedulesRef} setTab={setTab} savedSchedules={savedSchedules} setSavedSchedules={setSavedSchedules} />}
+        {tab === 'rewards' && <RewardsTab ref={rewardsRef} points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
+        {tab === 'achievements' && <AchievementsTab ref={achievementsRef} achievements={achievements} setTab={setTab} />}
       </View>
       </SafeAreaView>
 

@@ -15,7 +15,7 @@ import { useStyles, GREEN } from '../../logic/_styles';
 import { useTheme } from '../../logic/ThemeContext';
 import { allRoutes } from '../../logic/data';
 
-const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
+const SchedulesTab = React.forwardRef(({ setTab, savedSchedules = [], setSavedSchedules }, ref) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
   const f = theme.fonts;
@@ -457,6 +457,6 @@ const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
       </Modal>
     </>
   );
-};
+});
 
 export default SchedulesTab;

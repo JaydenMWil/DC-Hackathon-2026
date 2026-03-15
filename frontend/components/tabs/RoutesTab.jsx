@@ -4,7 +4,7 @@ import { useStyles, GREEN } from '../../logic/_styles';
 import { crowdingStyle, crowdingEmoji } from '../../logic/_helpers';
 import { allRoutes } from '../../logic/data';
 
-const RoutesTab = ({ 
+const RoutesTab = React.forwardRef(({ 
   location, 
   filteredRoutes, 
   refreshing, 
@@ -20,12 +20,13 @@ const RoutesTab = ({
   trackedBus,
   onStartTracking,
   onStopTracking
-}) => {
+}, ref) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 
   return (
     <ScrollView 
+      ref={ref}
       style={s.tabContent} 
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
@@ -163,6 +164,6 @@ const RoutesTab = ({
       <View style={{ height: 80 }} />
     </ScrollView>
   );
-};
+});
 
 export default RoutesTab;

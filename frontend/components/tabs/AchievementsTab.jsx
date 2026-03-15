@@ -2,12 +2,12 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useStyles, GREEN } from '../../logic/_styles';
 
-const AchievementsTab = ({ achievements, setTab }) => {
+const AchievementsTab = React.forwardRef(({ achievements, setTab }, ref) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 
   return (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
+    <ScrollView ref={ref} style={s.tabContent} showsVerticalScrollIndicator={false}>
       <View style={[s.row, { marginBottom: 16 }]}>
         <TouchableOpacity 
           onPress={() => setTab('home')} 
@@ -48,6 +48,6 @@ const AchievementsTab = ({ achievements, setTab }) => {
       <View style={{ height: 80 }} />
     </ScrollView>
   );
-};
+});
 
 export default AchievementsTab;

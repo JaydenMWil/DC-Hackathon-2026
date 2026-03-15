@@ -3,20 +3,22 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import { useStyles, GREEN } from '../../logic/_styles';
 import { useTheme } from '../../logic/ThemeContext';
 
-const HomeTab = ({ 
+const HomeTab = React.forwardRef(({ 
   points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings, 
   isTracking, distanceM, trackedBus,
   // Smart Reminder props
   smartRemindersEnabled, setSmartRemindersEnabled,
   safetyBuffer, setSafetyBuffer,
   walkingInfo, setIsSimulatingIssue,
-  refreshing, onRefresh
-}) => {
+  refreshing, onRefresh,
+  setTab
+}, ref) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 
   return (
     <ScrollView 
+      ref={ref}
       style={s.tabContent} 
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -30,11 +32,16 @@ const HomeTab = ({
     >
 
       {/* Balance Card */}
-      <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
+      <TouchableOpacity 
+        style={[s.card, s.gradientGreen, { marginBottom: 12 }]} 
+        onPress={() => setTab('rewards')}
+        accessibilityLabel="Your points balance. Tap to view rewards."
+        accessibilityRole="button"
+      >
         <Text style={s.cardTitle}>Your Balance</Text>
         <Text style={s.bigPoints}>{points} points</Text>
         <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Ready to redeem at local partners</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Live Boarding Status */}
       {isTracking && trackedBus && (
@@ -253,6 +260,6 @@ const HomeTab = ({
       </View>
     </ScrollView>
   );
-};
+});
 
 export default HomeTab;
