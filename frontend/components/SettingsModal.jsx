@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, SafeAreaView } from 'react-native';
-import { s, GREEN, BG } from './styles';
+import { s, GREEN, BG } from './_styles';
 
 const SettingsModal = ({
   showSettings, setShowSettings,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { s, GREEN } from './styles';
+import { s, GREEN } from '../_styles';
 
 const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings }) => (
   <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>

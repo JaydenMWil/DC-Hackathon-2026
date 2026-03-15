@@ -14,7 +14,7 @@ export const s = StyleSheet.create({
   tabContent: { flex: 1, paddingHorizontal: 14, paddingTop: 14 },
 
   card: { borderRadius: 16, padding: 18, marginBottom: 0 },
-  cardWhite: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  cardWhite: { backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', elevation: 2 },
   gradientGreen: { backgroundColor: GREEN },
 
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { s, GREEN } from './styles';
-import { crowdingStyle, crowdingEmoji } from './helpers';
+import { s, GREEN } from '../_styles';
+import { crowdingStyle, crowdingEmoji } from '../_helpers';
 
 const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRoute, selectRoute, filterAccessible, filterLimited, setTab, setFilterAccessible, setFilterLimited }) => (
   <ScrollView 

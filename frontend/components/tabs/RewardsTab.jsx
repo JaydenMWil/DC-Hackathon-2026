@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { s, GREEN } from './styles';
+import { s, GREEN } from '../_styles';
 
 const RewardsTab = ({ points, streak, rewards, redeem, setTab }) => (
   <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
