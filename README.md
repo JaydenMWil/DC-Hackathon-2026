@@ -2,15 +2,17 @@
 
 **Inclusive Transit Companion for the Durham Region**
 
-AccessRide is a cross-platform mobile application designed to make public transit more accessible and rewarding. It integrates real-time transit data from Durham Region Transit (DRT) with community-driven reporting and a gamified rewards system.
+AccessRide is a premium, accessibility-first mobile application designed to make public transit more inclusive and rewarding. It integrates real-time transit data from Durham Region Transit (DRT) with community-driven reporting, a gamified rewards system, and smart routine reminders.
 
 ---
 
 ## 🏗️ Project Architecture
 
-- **Frontend**: React Native with Expo (located in `/frontend`)
-- **Backend**: Python with FastAPI (located in `/backend`)
-- **Database**: SQLite3 (located in `/backend/database`)
+AccessRide follows a modern, decoupled architecture:
+
+- **Frontend**: React Native with Expo & Expo Router.
+- **Backend**: Python with FastAPI, leveraging asynchronous operations for real-time tracking.
+- **Database**: SQLite3 for lightweight, efficient data persistence.
 
 ---
 
@@ -20,64 +22,54 @@ AccessRide is a cross-platform mobile application designed to make public transi
 
 - [Node.js](https://nodejs.org/) (LTS version)
 - [Python 3.10+](https://www.python.org/downloads/)
-- [Expo Go](https://expo.dev/go) app on your physical device (optional, for testing)
+- [Expo Go](https://expo.dev/go) app on your physical device for the best experience.
 
 ---
 
 ## 🐍 Backend Setup (FastAPI)
 
 1. **Navigate to the backend directory**:
-
    ```powershell
    cd backend
    ```
 
 2. **Create and Activate a Virtual Environment**:
-
    ```powershell
    python -m venv venv
    .\venv\Scripts\activate
    ```
 
 3. **Install Dependencies**:
-
    ```powershell
-   pip install fastapi uvicorn requests gtfs-realtime-bindings protobuf
+   pip install -r requirements.txt
    ```
 
 4. **Run the Server**:
    ```powershell
-   cd backend
-   python main.py
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
-   _The server will start at `http://localhost:5000`._
-   go here and add your device IP address if you want physical apps to work \_frontend\config.js
-   <!-- -> API_URL = "http://[IP_ADDRESS]:5000" -->
+   _The server will start at `http://localhost:8000`._
 
 ---
 
 ## 📱 Frontend Setup (Expo)
 
 1. **Navigate to the frontend directory**:
-
    ```powershell
    cd frontend
    ```
 
 2. **Install Dependencies**:
-
    ```bash
    npm install
    ```
 
 3. **Configure API URL**:
-   Open `frontend/config.js` and update the `API_URL` to match your computer's local IP address if testing on a physical device.
+   The app uses `process.env.EXPO_PUBLIC_API_URL`. Ensure your local machine's IP address is configured if testing on a physical device.
 
 4. **Start the App**:
-
    ```bash
-   cd frontend
-   npx expo start
+   npx expo start -c
    ```
 
 5. **Open on Device**:
@@ -88,25 +80,28 @@ AccessRide is a cross-platform mobile application designed to make public transi
 
 ## 🛠️ Key Features
 
-- **Real-Time GTFS Tracking**: Live bus positions and estimated arrival times.
-- **Accessibility Indicators**: Visual tags for accessible routes and reported barriers.
-- **Community Reports**: Log issues like crowding, missed buses, or broken elevators.
-- **Gamification**: Earn points and badges for using accessible transit and helping the community.
-- **Haptic Feedback**: Premium tactile feel during navigation (on physical devices).
+- **♿ Accessibility-First Design**: Built with the **Lexend (The Inclusive)** font pairing for maximum legibility and universal design.
+- **🌈 Unified Theme System**: Dynamic support for **Dark Mode**, **High Contrast Mode**, and multiple **Font Size** scales, all WCAG 2.1 AA compliant.
+- **🧠 Smart Routine Reminders**: Habit-based transit notifications that automatically suggest accessible reroutes if barriers are detected.
+- **📍 Real-Time Proximity Alerts**: Radius-based GPS notifications (150m, 100m, 50m) with vibration and audio cues.
+- **🚨 Community Reporting**: Live updates on bus missed, wheelchair ramp outages, and crowding, with real-time polling (30s) and pull-to-refresh.
+- **🎁 Gamified Rewards**: Earn points and badges for inclusive transit habits, redeemable at local business partners.
 
 ---
 
 ## 📁 Repository Structure
 
-````text
+```text
 ├── backend/
-│   ├── api/v1/         # API Route Handlers
-│   ├── database/       # SQLite DB and Setup Scripts
-│   ├── src/            # Core Python Logic (User/Vehicle classes)
-│   └── main.py         # Entry point (FastAPI Server)
+│   ├── app/                # FastAPI Application Core
+│   │   ├── routers/        # API Route Handlers (Alerts, Schedules, etc.)
+│   │   ├── models/         # Database Models
+│   │   ├── services/       # Business Logic & GTFS Integration
+│   │   └── main.py         # App Entry Point
+│   └── scripts/            # Database Migrations & Seeders
 ├── frontend/
-│   ├── app/            # Expo Router Pages & Tabs
-│   ├── components/     # Reusable UI Components
-│   └── config.js       # Global API Configuration
-```<!--  -->
-````
+│   ├── app/                # Expo Router Navigation & Tab Views
+│   ├── components/         # Reusable UI & Modular Modals
+│   ├── core/               # Foundational Logic (API, Themes, Data, Styles)
+│   └── assets/             # Branding & Font Assets
+```
