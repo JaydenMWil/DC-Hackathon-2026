@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { useStyles, GREEN } from './_styles';
+import { useStyles, GREEN } from '../core/_styles';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 

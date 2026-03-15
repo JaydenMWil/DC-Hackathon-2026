@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, SafeAreaView } from 'react-native';
-import { useStyles, GREEN } from './_styles';
-import { useTheme } from './ThemeContext';
+import { useStyles, GREEN } from '../../core/_styles';
+import { useTheme } from '../../core/ThemeContext';
 
 const SettingsModal = ({
   showSettings, setShowSettings,
@@ -234,7 +234,7 @@ const SettingsModal = ({
                     <View style={[s.radioCircle, appLanguage === lang && { borderColor: GREEN }]}>
                       {appLanguage === lang && <View style={s.radioDot} />}
                     </View>
-                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10 }}>{lang}</Text>
+                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10, textAlign: 'left' }}>{lang}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

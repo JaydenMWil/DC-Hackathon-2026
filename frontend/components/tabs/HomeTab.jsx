@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { useStyles, GREEN } from '../_styles';
+import { useStyles, GREEN } from '../../core/_styles';
 
 const HomeTab = ({ 
   points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings, 

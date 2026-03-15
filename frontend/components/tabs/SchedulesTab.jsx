@@ -11,7 +11,8 @@ import {
   Keyboard
 } from 'react-native';
 import MapView, { Marker } from '../MapViewComponent';
-import { useStyles, GREEN } from '../_styles';
+import { useStyles, GREEN } from '../../core/_styles';
+import { allRoutes } from '../../core/data';
 
 const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
   const { s, theme } = useStyles();
@@ -43,13 +44,6 @@ const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  // Mock available routes for suggestions
-  const allRoutes = [
-    { id: '915', name: '915 Taunton', freq: 'Every 15 min', accessible: true, icon: '🚌' },
-    { id: '405', name: '405 Oshawa', freq: 'Every 20 min', accessible: true, icon: '🚌' },
-    { id: '900', name: '900 Pulse', freq: 'Every 10 min', accessible: true, icon: '⚡' },
-    { id: 'GO-B', name: 'GO Bus - Durham', freq: 'Every 30 min', accessible: true, icon: '🚆' },
-  ];
 
   const suggestedRoutes = React.useMemo(() => {
     if (!schedDest) return [];
@@ -421,8 +415,8 @@ const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
               </View>
 
               <View style={[s.row, { gap: 10 }]}>
-                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={() => setShowScheduleModal(false)}>
-                  <Text style={s.btnGrayText}>Cancel</Text>
+                <TouchableOpacity style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} onPress={() => setShowScheduleModal(false)}>
+                  <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
                   <Text style={s.btnText}>Save</Text>
@@ -445,10 +439,10 @@ const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
 
             <View style={[s.row, { gap: 12 }]}>
               <TouchableOpacity 
-                style={[s.btnHalf, { backgroundColor: c.dangerText, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]} 
+                style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} 
                 onPress={() => setDeleteConfirmId(null)}
               > 
-                <Text style={s.btnGrayText}>Cancel</Text>
+                <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[s.btnHalf, { backgroundColor: c.dangerText, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]} 

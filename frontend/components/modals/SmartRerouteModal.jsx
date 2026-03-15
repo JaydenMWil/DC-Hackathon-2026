@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
-import { useStyles, GREEN } from '../_styles';
+import { useStyles, GREEN } from '../../core/_styles';
 
 const SmartRerouteModal = ({ 
   visible, 
@@ -45,8 +45,8 @@ const SmartRerouteModal = ({
           </View>
 
           <View style={[s.row, { gap: 10 }]}>
-            <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={onClose}>
-              <Text style={s.btnGrayText}>Dismiss</Text>
+            <TouchableOpacity style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} onPress={onClose}>
+              <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Dismiss</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[s.btnHalf, s.btnGreen]} 

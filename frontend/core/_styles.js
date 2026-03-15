@@ -18,8 +18,8 @@ export function createStyles(theme) {
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: c.headerBg },
     header: { backgroundColor: c.headerBg, paddingHorizontal: 16, paddingBottom: 14 },
-    headerTitle: { fontSize: f.title + 3, fontWeight: '700', color: c.textOnGreen },
-    headerSub: { fontSize: f.label, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+    headerTitle: { fontSize: f.title + 3, fontFamily: 'Lexend-Bold', color: c.textOnGreen },
+    headerSub: { fontSize: f.label, fontFamily: 'Lexend-Regular', color: 'rgba(255,255,255,0.9)', marginTop: 2 },
     howBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
 
     tabContent: { flex: 1, paddingHorizontal: 17, paddingTop: 14 },
@@ -33,19 +33,19 @@ export function createStyles(theme) {
     },
     gradientGreen: { backgroundColor: GREEN },
 
-    cardTitle: { fontSize: f.sectionTitle, fontWeight: '700', color: c.textOnGreen, marginBottom: 6 },
-    bigPoints: { fontSize: f.big, fontWeight: '700', color: c.textOnGreen, marginBottom: 4 },
+    cardTitle: { fontSize: f.sectionTitle, fontFamily: 'Lexend-Bold', color: c.textOnGreen, marginBottom: 6 },
+    bigPoints: { fontSize: f.big, fontFamily: 'Lexend-Bold', color: c.textOnGreen, marginBottom: 4 },
 
-    sectionTitle: { fontSize: f.sectionTitle, fontWeight: '700', color: c.text, marginLeft: 6 },
-    pageTitle: { fontSize: f.title, fontWeight: '700', color: c.text },
-    mutedSm: { fontSize: f.label, color: c.textSecondary },
+    sectionTitle: { fontSize: f.sectionTitle, fontFamily: 'Lexend-Bold', color: c.text, marginLeft: 6 },
+    pageTitle: { fontSize: f.title, fontFamily: 'Lexend-Bold', color: c.text },
+    mutedSm: { fontSize: f.label, fontFamily: 'Lexend-Regular', color: c.textSecondary },
 
     row: { flexDirection: 'row', alignItems: 'center' },
     rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
     alertBox: { borderLeftWidth: 4, borderLeftColor: c.alertBorder, backgroundColor: c.alertBg, borderRadius: 8, padding: 10, marginBottom: 8 },
-    alertRoute: { fontWeight: '600', color: c.text, fontSize: f.subtitle },
-    alertIssue: { fontSize: f.label, color: c.textSecondary },
+    alertRoute: { fontFamily: 'Lexend-Bold', color: c.text, fontSize: f.subtitle },
+    alertIssue: { fontSize: f.label, fontFamily: 'Lexend-Regular', color: c.textSecondary },
 
     btnOrange: { backgroundColor: '#f97316', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginTop: 8 },
     btnGreen: { backgroundColor: GREEN, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
@@ -53,8 +53,8 @@ export function createStyles(theme) {
     btnGray: { backgroundColor: isDark ? c.border : '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
     btnGrayDisabled: { backgroundColor: isDark ? c.border : '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
     btnHalf: { flex: 1 },
-    btnText: { color: '#fff', fontWeight: '700', fontSize: f.button },
-    btnGrayText: { color: isDark ? c.text : '#374151', fontWeight: '700', fontSize: f.button },
+    btnText: { color: '#fff', fontFamily: 'Lexend-Bold', fontSize: f.button },
+    btnGrayText: { color: isDark ? c.text : '#374151', fontFamily: 'Lexend-Bold', fontSize: f.button },
 
     reminderBox: { backgroundColor: c.reminderBg, borderRadius: 10, padding: 14, marginBottom: 10 },
     quoteBox: { backgroundColor: c.card, borderRadius: 8, padding: 8, marginVertical: 6 },
@@ -76,7 +76,7 @@ export function createStyles(theme) {
     redeemBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
     redeemBtnActive: { backgroundColor: GREEN },
     redeemBtnDisabled: { backgroundColor: isDark ? c.border : '#e5e7eb' },
-    redeemBtnText: { color: '#fff', fontWeight: '700', fontSize: f.subtitle },
+    redeemBtnText: { color: '#fff', fontFamily: 'Lexend-Bold', fontSize: f.subtitle },
 
     radioRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: c.borderStrong, borderRadius: 10, padding: 12, marginBottom: 8 },
     radioCircle: { width: 18, height: 18, borderRadius: 99, borderWidth: 2, borderColor: isDark ? '#6b7280' : '#9ca3af', alignItems: 'center', justifyContent: 'center' },
@@ -90,24 +90,24 @@ export function createStyles(theme) {
     },
     navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 10 },
     navItemActive: { backgroundColor: GREEN },
-    navLabel: { fontSize: f.label, fontWeight: '500', color: c.textSecondary, marginTop: 2 },
+    navLabel: { fontSize: f.label, fontFamily: 'Lexend-Regular', color: c.textSecondary, marginTop: 2 },
 
     overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
     modalBox: { backgroundColor: c.modalBg, borderRadius: 20, padding: 22, width: '100%', maxWidth: 480 },
-    modalTitle: { fontSize: f.heading, fontWeight: '700', color: c.text, marginBottom: 12 },
+    modalTitle: { fontSize: f.heading, fontFamily: 'Lexend-Bold', color: c.text, marginBottom: 12 },
     infoBanner: { borderRadius: 10, padding: 14, marginBottom: 12 },
-    fieldLabel: { fontWeight: '600', color: c.text, fontSize: f.button, marginBottom: 8 },
+    fieldLabel: { fontFamily: 'Lexend-Bold', color: c.text, fontSize: f.button, marginBottom: 8 },
 
     stepRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
     stepCircle: { width: 44, height: 44, borderRadius: 99, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    stepNum: { color: '#fff', fontWeight: '700', fontSize: f.heading - 2 },
+    stepNum: { color: '#fff', fontFamily: 'Lexend-Bold', fontSize: f.heading - 2 },
     detailBox: { backgroundColor: isDark ? c.card : '#f9fafb', borderRadius: 8, padding: 10 },
 
     iconMd: { fontSize: f.icon },
 
     qrBox: { backgroundColor: c.qrBg, borderRadius: 10, padding: 14, width: '100%', marginBottom: 8 },
     qrInner: { backgroundColor: c.qrInner, padding: 24, borderRadius: 8, alignItems: 'center', marginBottom: 6 },
-    textInput: { backgroundColor: c.inputBg, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 10, padding: 12, fontSize: f.body, color: c.text, height: 100, textAlignVertical: 'top' },
+    textInput: { backgroundColor: c.inputBg, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 10, padding: 12, fontSize: f.body, fontFamily: 'Lexend-Regular', color: c.text, height: 100, textAlignVertical: 'top' },
     filterChip: {
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -122,8 +122,8 @@ export function createStyles(theme) {
     },
     filterChipText: {
       fontSize: f.label + 1,
+      fontFamily: 'Lexend-Regular',
       color: c.textSecondary,
-      fontWeight: '600',
     },
     filterChipTextActive: {
       color: c.textOnGreen,

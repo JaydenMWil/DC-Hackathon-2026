@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resolveTheme } from './themes';
+import { useFonts, Lexend_400Regular, Lexend_700Bold } from '@expo-google-fonts/lexend';
 
 const STORAGE_KEYS = {
   colorMode: '@appearance_colorMode',
@@ -16,7 +17,12 @@ export function ThemeProvider({ children }) {
   const [colorMode, setColorModeState] = useState('system');
   const [fontSize, setFontSizeState] = useState('medium');
   const [highContrast, setHighContrastState] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    'Lexend-Regular': Lexend_400Regular,
+    'Lexend-Bold': Lexend_700Bold,
+  });
 
   // ── Load saved preferences on mount ──────────────────────────────────────
   useEffect(() => {
@@ -33,7 +39,7 @@ export function ThemeProvider({ children }) {
       } catch (e) {
         console.warn('Failed to load theme preferences', e);
       } finally {
-        setLoaded(true);
+        setPrefsLoaded(true);
       }
     })();
   }, []);
@@ -65,7 +71,7 @@ export function ThemeProvider({ children }) {
     setColorMode,
     setFontSize,
     setHighContrast,
-    loaded,
+    loaded: prefsLoaded && fontsLoaded,
   };
 
   return (
