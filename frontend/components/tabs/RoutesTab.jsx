@@ -3,7 +3,23 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import { s, GREEN } from '../_styles';
 import { crowdingStyle, crowdingEmoji } from '../_helpers';
 
-const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRoute, selectRoute, filterAccessible, filterLimited, setTab, setFilterAccessible, setFilterLimited }) => (
+const RoutesTab = ({ 
+  location, 
+  filteredRoutes, 
+  refreshing, 
+  onRefresh, 
+  selectedRoute, 
+  selectRoute, 
+  filterAccessible, 
+  filterLimited, 
+  setTab, 
+  setFilterAccessible, 
+  setFilterLimited,
+  isTracking,
+  trackedBus,
+  onStartTracking,
+  onStopTracking
+}) => (
   <ScrollView 
     style={s.tabContent} 
     showsVerticalScrollIndicator={false}
@@ -71,15 +87,29 @@ const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRo
       filteredRoutes.map(route => {
         const cs = crowdingStyle(route.crowding);
         const selected = selectedRoute?.id === route.id;
+        const beingTracked = isTracking && trackedBus?.id === route.id;
         return (
           <TouchableOpacity
             key={route.id}
-            style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
+            style={[
+              s.card, 
+              s.cardWhite, 
+              { 
+                marginBottom: 10, 
+                borderWidth: selected || beingTracked ? 2 : 1, 
+                borderColor: beingTracked ? '#22c55e' : (selected ? GREEN : '#e5e7eb') 
+              }
+            ]}
             onPress={() => selectRoute(route)}
-            accessibilityLabel={`${route.route_long_name === 'Unknown Route' ? route.route_name : route.route_long_name}, arrival in ${route.eta}. ${route.accessible ? 'Accessible.' : ''}`}
+            accessibilityLabel={`${route.route_long_name === 'Unknown Route' ? route.route_name : route.route_long_name}, arrival in ${route.eta}. ${route.accessible ? 'Accessible.' : ''}${beingTracked ? ' Currently tracking.' : ''}`}
             accessibilityRole="button"
             accessibilityState={{ selected: selected }}
           >
+            {beingTracked && (
+              <View style={{ position: 'absolute', top: -5, right: -5, zIndex: 10 }}>
+                <View style={[s.dot, { backgroundColor: '#22c55e', width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#fff' }]} />
+              </View>
+            )}
             <View style={s.rowBetween}>
               <View style={{ flex: 1 }}>
                 <View style={[s.row, { justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }]}>
@@ -103,10 +133,22 @@ const RoutesTab = ({ location, filteredRoutes, refreshing, onRefresh, selectedRo
               </View>
             </View>
             {selected && (
-              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                <TouchableOpacity style={s.btnGreen}>
-                  <Text style={s.btnText}>Start Tracking</Text>
-                </TouchableOpacity>
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb', flexDirection: 'row', gap: 10 }}>
+                {!beingTracked ? (
+                  <TouchableOpacity 
+                    style={[s.btnGreen, { flex: 1 }]} 
+                    onPress={() => onStartTracking(route)}
+                  >
+                    <Text style={s.btnText}>Start Tracking</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={[s.btnGreen, { flex: 1, backgroundColor: '#ef4444' }]} 
+                    onPress={() => onStopTracking()}
+                  >
+                    <Text style={s.btnText}>Stop Tracking</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </TouchableOpacity>

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  SafeAreaView,
   StatusBar,
   Switch,
   TextInput,
@@ -15,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
 // ─── Local imports ───────────────────────────────────────────────────────────
@@ -27,6 +27,8 @@ import AchievementsTab from '../../components/tabs/AchievementsTab';
 import SchedulesTab from '../../components/tabs/SchedulesTab';
 import SettingsModal from '../../components/SettingsModal';
 import api from '../../components/api';
+import useProximityTracker from '../../components/hooks/useProximityTracker';
+import ProximityAlertOverlay from '../../components/ProximityAlertOverlay';
 
 const AccessRideApp = () => {
   const [tab, setTab] = useState('home');
@@ -43,6 +45,14 @@ const AccessRideApp = () => {
   const [reportStep, setReportStep] = useState('SELECT_TYPE');
   const [issueDetails, setIssueDetails] = useState('');
   const [issueRoute, setIssueRoute] = useState('');
+
+  // ── Proximity Alert state ──────────────────────────────────────────────────
+  const [vibrationAlert, setVibrationAlert] = useState(true);
+  const [soundCueAlert, setSoundCueAlert] = useState(true);
+  const [visualPopupAlert, setVisualPopupAlert] = useState(true);
+  const [proximityAlertVisible, setProximityAlertVisible] = useState(false);
+  const [proximityAlertData, setProximityAlertData] = useState(null);
+  const [hasEarnedFirstAlertBonus, setHasEarnedFirstAlertBonus] = useState(false);
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
@@ -70,6 +80,30 @@ const AccessRideApp = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [filterAccessible, setFilterAccessible] = useState(false);
   const [filterLimited, setFilterLimited] = useState(false);
+
+  // ── Proximity Tracker Hook ────────────────────────────────────────────────
+  const {
+    isTracking,
+    trackedBus,
+    distanceM,
+    startTracking,
+    stopTracking
+  } = useProximityTracker({
+    userLocation: location,
+    alertRadius,
+    vibrationOn: vibrationAlert,
+    soundOn: soundCueAlert,
+    visualOn: visualPopupAlert,
+    onAlertTriggered: (data) => {
+      setProximityAlertData(data);
+      setProximityAlertVisible(true);
+      // Award bonus points for first-time use
+      if (!hasEarnedFirstAlertBonus) {
+        setPoints(p => p + 10);
+        setHasEarnedFirstAlertBonus(true);
+      }
+    }
+  });
 
   // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchLiveRoutes = async (loc) => {
@@ -229,11 +263,15 @@ const AccessRideApp = () => {
     </TouchableOpacity>
   );
 
-  const AlertTypeRow = ({ icon, label }) => (
+  const AlertTypeRow = ({ icon, label, value, onChange }) => (
     <View style={[s.radioRow, { borderColor: '#e5e7eb' }]}>
       <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
       <Text style={{ flex: 1, fontWeight: '500', color: '#111827', fontSize: 13 }}>{label}</Text>
-      <Switch value={true} trackColor={{ true: GREEN }} />
+      <Switch 
+        value={value} 
+        onValueChange={onChange}
+        trackColor={{ true: GREEN }} 
+      />
     </View>
   );
 
@@ -282,8 +320,38 @@ const AccessRideApp = () => {
 
       {/* Main Content */}
       <View style={{ flex: 1, backgroundColor: BG }}>
-        {tab === 'home' && <HomeTab points={points} communityAlerts={communityAlerts} gpsAlertEnabled={gpsAlertEnabled} alertRadius={alertRadius} handleOpenReport={handleOpenReport} setShowGpsSettings={setShowGpsSettings} />}
-        {tab === 'routes' && <RoutesTab location={location} filteredRoutes={filteredRoutes} refreshing={refreshing} onRefresh={onRefresh} selectedRoute={selectedRoute} selectRoute={selectRoute} filterAccessible={filterAccessible} filterLimited={filterLimited} setTab={setTab} setFilterAccessible={setFilterAccessible} setFilterLimited={setFilterLimited} />}
+        {tab === 'home' && (
+          <HomeTab 
+            points={points} 
+            communityAlerts={communityAlerts} 
+            gpsAlertEnabled={gpsAlertEnabled} 
+            alertRadius={alertRadius} 
+            handleOpenReport={handleOpenReport} 
+            setShowGpsSettings={setShowGpsSettings}
+            isTracking={isTracking}
+            distanceM={distanceM}
+            trackedBus={trackedBus}
+          />
+        )}
+        {tab === 'routes' && (
+          <RoutesTab 
+            location={location} 
+            filteredRoutes={filteredRoutes} 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            selectedRoute={selectedRoute} 
+            selectRoute={selectRoute} 
+            filterAccessible={filterAccessible} 
+            filterLimited={filterLimited} 
+            setTab={setTab} 
+            setFilterAccessible={setFilterAccessible} 
+            setFilterLimited={setFilterLimited}
+            isTracking={isTracking}
+            trackedBus={trackedBus}
+            onStartTracking={startTracking}
+            onStopTracking={stopTracking}
+          />
+        )}
         {tab === 'schedules' && <SchedulesTab setTab={setTab} />}
         {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
         {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
@@ -485,9 +553,24 @@ const AccessRideApp = () => {
               <RadiusOption value={100} label="Recommended" />
               <RadiusOption value={50} label="Last minute" />
               <Text style={[s.fieldLabel, { marginTop: 14 }]}>Alert Types</Text>
-              <AlertTypeRow icon="📳" label="Vibration Alert" />
-              <AlertTypeRow icon="🔊" label="Sound Cue" />
-              <AlertTypeRow icon="💬" label="Visual Popup" />
+              <AlertTypeRow 
+                icon="📳" 
+                label="Vibration Alert" 
+                value={vibrationAlert} 
+                onChange={setVibrationAlert} 
+              />
+              <AlertTypeRow 
+                icon="🔊" 
+                label="Sound Cue" 
+                value={soundCueAlert} 
+                onChange={setSoundCueAlert} 
+              />
+              <AlertTypeRow 
+                icon="💬" 
+                label="Visual Popup" 
+                value={visualPopupAlert} 
+                onChange={setVisualPopupAlert} 
+              />
               <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 14 }]}>
                 <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 6 }}>✨ Universal Design Benefits</Text>
                 {[
@@ -581,6 +664,14 @@ const AccessRideApp = () => {
           </ScrollView>
         </TouchableOpacity>
       </Modal>
+      {/* Proximity Alert Overlay */}
+      <ProximityAlertOverlay
+        visible={proximityAlertVisible}
+        bus={proximityAlertData?.bus}
+        distance={proximityAlertData?.distance}
+        onDismiss={() => setProximityAlertVisible(false)}
+        onStopTracking={stopTracking}
+      />
     </SafeAreaView>
   );
 };
