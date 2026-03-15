@@ -8,3 +8,7 @@ __pycache__/
 # Local environment variables
 .env
 .env.local
+
+*.db
+*.db-shm
+*.db-wal
