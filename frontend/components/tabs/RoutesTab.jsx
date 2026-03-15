@@ -57,7 +57,7 @@ const RoutesTab = React.forwardRef(({
         >
           <Text style={{ color: c.textSecondary, fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
-        <Text style={s.pageTitle}>Live Routes near you</Text>
+        <Text style={s.pageTitle} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Live Routes near you</Text>
       </View>
 
       {/* Primary Filters */}
@@ -66,13 +66,13 @@ const RoutesTab = React.forwardRef(({
           style={[s.filterChip, filterAccessible && s.filterChipActive]}
           onPress={() => setFilterAccessible(!filterAccessible)}
         >
-          <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]}>♿ Accessible</Text>
+          <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>♿ Accessible</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.filterChip, filterLimited && s.filterChipActive]}
           onPress={() => setFilterLimited(!filterLimited)}
         >
-          <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]}>📍 Top 5</Text>
+          <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>📍 Top 5</Text>
         </TouchableOpacity>
       </View>
 
@@ -90,7 +90,7 @@ const RoutesTab = React.forwardRef(({
               ]}
               onPress={() => toggleCrowding(opt.level)}
             >
-              <Text style={[s.filterChipText, maxCrowding.includes(opt.level) && s.filterChipTextActive, { fontSize: 13, fontWeight: '600' }]}>
+              <Text style={[s.filterChipText, maxCrowding.includes(opt.level) && s.filterChipTextActive, { fontSize: 13, fontWeight: '600' }]} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>
                 {opt.emoji} {opt.label}
               </Text>
             </TouchableOpacity>
@@ -180,14 +180,14 @@ const RoutesTab = React.forwardRef(({
                       style={[s.btnGreen, { flex: 1 }]}
                       onPress={() => onStartTracking(route)}
                     >
-                      <Text style={s.btnText}>Start Tracking</Text>
+                      <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Start Tracking</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
                       style={[s.btnGreen, { flex: 1, backgroundColor: c.dangerText }]}
                       onPress={() => onStopTracking()}
                     >
-                      <Text style={s.btnText}>Stop Tracking</Text>
+                      <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Stop Tracking</Text>
                     </TouchableOpacity>
                   )}
                 </View>

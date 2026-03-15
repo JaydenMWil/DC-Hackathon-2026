@@ -388,9 +388,9 @@ const MainApp = () => {
         {/* Header */}
         <View style={[s.header, { paddingTop: insets.top + 14 }]}>
           <View style={s.rowBetween}>
-          <View>
-            <Text style={s.headerTitle}>AccessRide</Text>
-            <Text style={s.headerSub}>Inclusive Transit Companion</Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={s.headerTitle} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>AccessRide</Text>
+            <Text style={s.headerSub} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Inclusive Transit Companion</Text>
           </View>
           <TouchableOpacity 
             style={s.howBtn} 
@@ -398,7 +398,7 @@ const MainApp = () => {
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Text style={{ color: theme.colors.textOnGreen, fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
+            <Text style={{ color: theme.colors.textOnGreen, fontSize: 13, fontWeight: '500' }} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>⚙️ Settings</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -475,7 +475,14 @@ const MainApp = () => {
             accessibilityState={{ selected: tab === item.key }}
           >
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-            <Text style={[s.navLabel, tab === item.key && { color: theme.colors.textOnGreen }]}>{item.label}</Text>
+            <Text 
+              style={[s.navLabel, tab === item.key && { color: theme.colors.textOnGreen }]} 
+              adjustsFontSizeToFit 
+              numberOfLines={1}
+              minimumFontScale={0.7}
+            >
+              {item.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>

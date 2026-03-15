@@ -132,12 +132,12 @@ const ProximityAlertOverlay = ({
 
         <View style={s.row}>
           <TouchableOpacity
-            style={[s.btnHalf, s.btnGray]}
+            style={[s.btnHalf, s.btnPurple]}
             onPress={handleDismiss}
             accessibilityLabel="Dismiss alert"
             accessibilityRole="button"
           >
-            <Text style={s.btnGrayText}>Dismiss</Text>
+            <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Dismiss</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.btnHalf, s.btnGreen]}
@@ -148,7 +148,7 @@ const ProximityAlertOverlay = ({
             accessibilityLabel="Stop tracking this bus"
             accessibilityRole="button"
           >
-            <Text style={s.btnText}>Stop Tracking</Text>
+            <Text style={s.btnText} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.7}>Stop Tracking</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

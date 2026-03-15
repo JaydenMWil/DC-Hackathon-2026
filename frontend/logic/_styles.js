@@ -36,8 +36,8 @@ export function createStyles(theme) {
     cardTitle: { fontSize: f.sectionTitle, fontFamily: 'Lexend-Bold', color: c.textOnGreen, marginBottom: 6 },
     bigPoints: { fontSize: f.big, fontFamily: 'Lexend-Bold', color: c.textOnGreen, marginBottom: 4 },
 
-    sectionTitle: { fontSize: f.sectionTitle, fontFamily: 'Lexend-Bold', color: c.text, marginLeft: 6 },
-    pageTitle: { fontSize: f.title, fontFamily: 'Lexend-Bold', color: c.text },
+    sectionTitle: { fontSize: f.sectionTitle, fontFamily: 'Lexend-Bold', color: c.text, marginLeft: 6, flex: 1 },
+    pageTitle: { fontSize: f.title, fontFamily: 'Lexend-Bold', color: c.text, flex: 1 },
     mutedSm: { fontSize: f.label, fontFamily: 'Lexend-Regular', color: c.textSecondary },
 
     row: { flexDirection: 'row', alignItems: 'center' },
@@ -158,7 +158,7 @@ export const s = createStyles({
   },
   fonts: {
     body: 14, label: 11, labelMd: 12, button: 14, subtitle: 13,
-    title: 19, sectionTitle: 15, heading: 20, big: 34, icon: 20, iconLg: 26,
+    title: 19, sectionTitle: 15, heading: 20, big: 34, icon: 20, iconLg: 26, minScale: 0.7,
   },
   green: GREEN, darkGreen: DARK_GREEN,
 });
