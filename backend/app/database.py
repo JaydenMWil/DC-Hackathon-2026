@@ -55,12 +55,25 @@ def init_db():
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         details TEXT,
         bus_name TEXT,
+        route_name TEXT,
         stop_name TEXT,
-        CHECK ((bus_name IS NOT NULL AND trim(bus_name) != '') OR (stop_name IS NOT NULL AND trim(stop_name) != ''))
+        CHECK ((bus_name IS NOT NULL AND trim(bus_name) != '') OR 
+               (route_name IS NOT NULL AND trim(route_name) != '') OR 
+               (stop_name IS NOT NULL AND trim(stop_name) != ''))
     )
     ''')
     
     conn.commit()
+    
+    # Migration helper: Add route_name if it was missing from older schema
+    try:
+        cursor.execute("ALTER TABLE issues ADD COLUMN route_name TEXT")
+        conn.commit()
+        print("Migrated: Added route_name column to issues table")
+    except sqlite3.OperationalError:
+        # Already exists or table missing
+        pass
+
     conn.close()
     print(f"Successfully initialized the database tables in {DB_PATH}")
 

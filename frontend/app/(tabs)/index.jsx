@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
   Modal,
   SafeAreaView,
   StatusBar,
@@ -17,67 +16,18 @@ import {
   Dimensions
 } from 'react-native';
 import * as Location from 'expo-location';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 
-// ─── MINIMAL QR CODE GENERATOR ───────────────────────────────────────────────
-// Generates a visual QR-like grid from a string (simplified visual representation)
-const QRCode = ({ value, size = 160 }) => {
-  const cells = useMemo(() => {
-    // Create a deterministic grid from the value string
-    const hash = (str) => {
-      let h = 5381;
-      for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
-      return Math.abs(h);
-    };
-    const N = 21;
-    const grid = Array.from({ length: N }, (_, r) =>
-      Array.from({ length: N }, (_, c) => {
-        // Always-dark finder patterns (top-left, top-right, bottom-left corners)
-        const inFinder = (row, col) =>
-          (row < 8 && col < 8) || (row < 8 && col >= N - 8) || (row >= N - 8 && col < 8);
-        if (inFinder(r, c)) {
-          const ir = r >= N - 8 ? r - (N - 8) : r;
-          const ic = c >= N - 8 ? c - (N - 8) : c;
-          const br = r < 8 ? r : r - (N - 8);
-          const bc = c < 8 ? c : c - (N - 8);
-          if (br === 0 || br === 6 || bc === 0 || bc === 6) return true;
-          if (br >= 2 && br <= 4 && bc >= 2 && bc <= 4) return true;
-          return false;
-        }
-        // Timing patterns
-        if (r === 6 || c === 6) return (r + c) % 2 === 0;
-        // Data cells
-        const seed = hash(value + r * N + c);
-        return seed % 3 !== 0;
-      })
-    );
-    return grid;
-  }, [value]);
+// ─── Local imports ───────────────────────────────────────────────────────────
+import { s, GREEN, BG } from '../../components/_styles';
+import { QRCode, crowdingStyle, crowdingEmoji, rewards, achievements } from '../../components/_helpers';
+import HomeTab from '../../components/tabs/HomeTab';
+import RoutesTab from '../../components/tabs/RoutesTab';
+import RewardsTab from '../../components/tabs/RewardsTab';
+import AchievementsTab from '../../components/tabs/AchievementsTab';
+import SchedulesTab from '../../components/tabs/SchedulesTab';
+import SettingsModal from '../../components/SettingsModal';
 
-  const cell = size / 21;
-  return (
-    <View style={{ width: size, height: size, backgroundColor: '#fff' }}>
-      {cells.map((row, r) => (
-        <View key={r} style={{ flexDirection: 'row' }}>
-          {row.map((dark, c) => (
-            <View
-              key={c}
-              style={{
-                width: cell,
-                height: cell,
-                backgroundColor: dark ? '#111827' : '#fff',
-              }}
-            />
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-};
-
-const GREEN = '#007647';
-const DARK_GREEN = '#00703c';
-const BG = '#f0f7f4';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.160.33.215:8000';
 
 const AccessRideApp = () => {
   const [tab, setTab] = useState('home');
@@ -91,8 +41,9 @@ const AccessRideApp = () => {
   const [showDiagram, setShowDiagram] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [issueType, setIssueType] = useState('');
-  const [reportStep, setReportStep] = useState('SELECT_TYPE'); // 'SELECT_TYPE', 'ENTER_DETAILS', 'CONFIRM', 'SUCCESS'
+  const [reportStep, setReportStep] = useState('SELECT_TYPE');
   const [issueDetails, setIssueDetails] = useState('');
+  const [issueRoute, setIssueRoute] = useState('');
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
@@ -114,18 +65,20 @@ const AccessRideApp = () => {
   const [locationPerm, setLocationPerm] = useState('while_using');
   const [dataSharing, setDataSharing] = useState(true);
 
+  // ── Live routes state ───────────────────────────────────────────────────────
   const [location, setLocation] = useState(null);
   const [liveRoutes, setLiveRoutes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filterAccessible, setFilterAccessible] = useState(false);
   const [filterLimited, setFilterLimited] = useState(false);
 
+  // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchLiveRoutes = async (loc) => {
     const coords = loc || location;
     if (!coords) return;
 
     try {
-      const resp = await fetch(`http://10.160.33.215:8000/buses/nearby?lat=${coords.coords.latitude}&lon=${coords.coords.longitude}`);
+      const resp = await fetch(`${BASE_URL}/buses/nearby?lat=${coords.coords.latitude}&lon=${coords.coords.longitude}`);
       const data = await resp.json();
       setLiveRoutes(data.buses || []);
     } catch (err) {
@@ -133,16 +86,11 @@ const AccessRideApp = () => {
     }
   };
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
-      let loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc);
-      await fetchLiveRoutes(loc);
-    }
+    await fetchLiveRoutes();
     setRefreshing(false);
-  }, [location]);
+  };
 
   useEffect(() => {
     (async () => {
@@ -171,230 +119,16 @@ const AccessRideApp = () => {
     return r;
   }, [liveRoutes, filterAccessible, filterLimited]);
 
-  const rewards = [
-    { id: 1, name: 'BrewHouse Café', offer: '$2 off', pts: 150, icon: '☕', claimed: false },
-    { id: 2, name: 'City Museum', offer: 'Free entry', pts: 200, icon: '🏛️', claimed: false },
-    { id: 3, name: 'Transit Store', offer: '10% off', pts: 100, icon: '👕', claimed: true },
-    { id: 4, name: 'Green Bistro', offer: '15% off', pts: 180, icon: '🥗', claimed: false },
-    { id: 5, name: 'Book Nook', offer: '$5 off', pts: 120, icon: '📚', claimed: false },
-  ];
-
-  const achievements = [
-    { id: 1, name: 'Early Bird', desc: '10 rides before 7 AM', icon: '🌅', progress: 6, total: 10 },
-    { id: 2, name: 'City Explorer', desc: '15 different stations', icon: '🗺️', progress: 15, total: 15 },
-    { id: 3, name: 'Accessibility Ally', desc: '5 accessibility reports', icon: '🦸', progress: 3, total: 5 },
-    { id: 4, name: 'Transit Helper', desc: '7-day streak', icon: '⚡', progress: 5, total: 7 },
-  ];
-
-  // ── Schedules state ──────────────────────────────────────────────────────────
-  const [schedules, setSchedules] = useState([]);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [editingScheduleId, setEditingScheduleId] = useState(null);
-  const [schedLabel, setSchedLabel] = useState('My Commute');
-  const [schedDay, setSchedDay] = useState('Weekdays');
-  const [schedHour, setSchedHour] = useState('8');
-  const [schedMinute, setSchedMinute] = useState('00');
-  const [schedAmPm, setSchedAmPm] = useState('AM');
-  const [schedOrigin, setSchedOrigin] = useState('Downtown Station');
-  const [schedDest, setSchedDest] = useState('Durham College North');
-
-  // ── Map & Location State ───────────────────────────────────────────────────────
-  const [mapRegion, setMapRegion] = useState({
-    latitude: 43.897,
-    longitude: -78.865,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-  const [mapStops, setMapStops] = useState([]); // Stops fetched from backend
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectingFor, setSelectingFor] = useState('origin'); // 'origin' or 'dest'
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [selectedPin, setSelectedPin] = useState(null); // The user's typed location pin
-
-  const availableStops = [
-    { name: 'Downtown Station', lat: 43.897, lon: -78.865 },
-    { name: 'Durham College North', lat: 43.945, lon: -78.896 },
-    { name: 'City Center', lat: 43.890, lon: -78.860 },
-    { name: 'Oshawa Centre', lat: 43.882, lon: -78.883 },
-  ];
-
-  const fetchSchedules = () => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/schedules/`)
-      .then(res => res.json())
-      .then(data => setSchedules(data))
-      .catch(err => console.error("Error fetching schedules", err));
-  };
-
-  const saveSchedule = () => {
-    let hour = parseInt(schedHour);
-    if (!hour || isNaN(hour)) hour = 8;
-    if (schedAmPm === 'PM' && hour !== 12) hour += 12;
-    if (schedAmPm === 'AM' && hour === 12) hour = 0;
-    let min = parseInt(schedMinute) || 0;
-    const timeSinceMidnight = hour * 60 + min;
-
-    const originStop = availableStops.find(s => s.name === schedOrigin) || availableStops[0];
-    const destStop = availableStops.find(s => s.name === schedDest) || availableStops[1];
-
-    let recRoute = "Route 915";
-    let recBus = 101;
-    if (schedOrigin === 'Oshawa Centre' || schedDest === 'Oshawa Centre') {
-      recRoute = "Route 410";
-      recBus = 205;
-    } else if (schedOrigin === 'City Center' || schedDest === 'City Center') {
-      recRoute = "Route 901";
-      recBus = 308;
-    }
-
-    const payload = {
-      schedule_label: schedLabel,
-      origin_lat: originStop.lat, origin_lon: originStop.lon,
-      dest_lat: destStop.lat, dest_lon: destStop.lon,
-      origin_stop_id: null, dest_stop_id: null,
-      scheduled_days: schedDay,
-      scheduled_time: timeSinceMidnight,
-      repeating: true,
-      recommended_route_id: recRoute,
-      recommended_bus_id: recBus,
-    };
-
-    const url = editingScheduleId
-      ? `${process.env.EXPO_PUBLIC_API_URL}/schedules/${editingScheduleId}`
-      : `${process.env.EXPO_PUBLIC_API_URL}/schedules/`;
-    const method = editingScheduleId ? 'PUT' : 'POST';
-
-    fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(() => {
-        fetchSchedules();
-        setShowScheduleModal(false);
-      })
-      .catch(err => console.error("Error saving schedule", err));
-  };
-
-  const deleteSchedule = (id) => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/schedules/${id}`, { method: 'DELETE' })
-      .then(() => fetchSchedules())
-      .catch(err => console.error("Error deleting schedule", err));
-  };
-
-  // ── Map & Search Action Handlers ──────────────────────────────────────────────
-  const handleSearchTyping = async (text) => {
-    setSearchQuery(text);
-    if (text.length > 2) {
-      try {
-        // Photon API for open-source autocomplete centered roughly on Durham Region
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lat=43.897&lon=-78.865&limit=5`);
-        const data = await res.json();
-        setSearchResults(data.features || []);
-        setShowSearchDropdown(true);
-      } catch (err) {
-        console.error("Photon search error", err);
-      }
-    } else {
-      setShowSearchDropdown(false);
-      setSearchResults([]);
-    }
-  };
-
-  const selectSearchResult = async (feature) => {
-    const [lon, lat] = feature.geometry.coordinates;
-    const name = feature.properties.name || feature.properties.street || "Selected Location";
-
-    setSearchQuery(name);
-    setShowSearchDropdown(false);
-    Keyboard.dismiss();
-
-    setSelectedPin({ lat, lon, name });
-
-    // Animate map to new location
-    setMapRegion({
-      latitude: lat,
-      longitude: lon,
-      latitudeDelta: 0.02,
-      longitudeDelta: 0.02,
-    });
-
-    // Fetch closest stops from our backend
-    try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/stops/?lat=${lat}&lon=${lon}&limit=5`);
-      const stops = await res.json();
-      if (Array.isArray(stops)) {
-        setMapStops(stops);
-      } else {
-        console.error("Backend did not return an array of stops", stops);
-        setMapStops([]);
-      }
-    } catch (err) {
-      console.error("Error fetching closest stops", err);
-      setMapStops([]);
-    }
-  };
-
-  const setStopFromMap = (stop) => {
-    if (selectingFor === 'origin') {
-      setSchedOrigin(stop.stop_name);
-    } else {
-      setSchedDest(stop.stop_name);
-    }
-    // Briefly clear the map selections to show it was "saved"
-    setSearchQuery('');
-    setMapStops([]);
-    setSelectedPin(null);
-  };
-
-  const openEditSchedule = (sched) => {
-    setEditingScheduleId(sched.id);
-    setSchedLabel(sched.schedule_label);
-    setSchedDay(sched.scheduled_days);
-
-    const oStop = availableStops.find(s => Math.abs(s.lat - sched.origin_lat) < 0.001) || availableStops[0];
-    const dStop = availableStops.find(s => Math.abs(s.lat - sched.dest_lat) < 0.001) || availableStops[1];
-    setSchedOrigin(oStop.name);
-    setSchedDest(dStop.name);
-
-    let totalMins = sched.scheduled_time;
-    let h = Math.floor(totalMins / 60);
-    let m = totalMins % 60;
-
-    let ampm = h >= 12 ? 'PM' : 'AM';
-    let displayHour = h % 12;
-    if (displayHour === 0) displayHour = 12;
-
-    setSchedHour(displayHour.toString());
-    setSchedMinute(m < 10 ? '0' + m : m.toString());
-    setSchedAmPm(ampm);
-    setShowScheduleModal(true);
-  };
-
-  const openNewSchedule = () => {
-    setEditingScheduleId(null);
-    setSchedLabel('My Commute');
-    setSchedDay('Weekdays');
-    setSchedHour('8');
-    setSchedMinute('00');
-    setSchedAmPm('AM');
-    setSchedOrigin('Downtown Station');
-    setSchedDest('Durham College North');
-    setShowScheduleModal(true);
-  };
-
+  // ── Community alerts ──────────────────────────────────────────────────────
   const [communityAlerts, setCommunityAlerts] = useState([]);
 
   const fetchCommunityAlerts = () => {
-    // Connects to local IPv4 for physical device testing
-    // Change both fetch calls to this:
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/reports/`)
+    fetch(`${BASE_URL}/reports/`)
       .then(res => res.json())
       .then(data => {
         const formatted = data.map(item => ({
           id: item.issue_id,
-          route: item.bus_name || item.stop_name || 'General',
+          route: item.route_name || item.bus_name || item.stop_name || 'General',
           issue: `${item.issue_type === 'bus-missed' ? "Bus didn't arrive" : item.issue_type === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : item.issue_type === 'crowding' ? "Heavy crowding" : item.issue_type === 'bike-rack-full' ? "Bike rack is full" : item.issue_type === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}${item.details ? ' - ' + item.details : ''}`,
           time: new Date(item.timestamp + 'Z').toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true }),
           points: 20
@@ -406,9 +140,9 @@ const AccessRideApp = () => {
 
   useEffect(() => {
     fetchCommunityAlerts();
-    fetchSchedules();
   }, []);
 
+  // ── Actions ─────────────────────────────────────────────────────────────────
   const selectRoute = (route) => {
     setSelectedRoute(route);
     if (route.accessible) setPoints(p => p + 15);
@@ -436,7 +170,8 @@ const AccessRideApp = () => {
       body: JSON.stringify({
         issue_type: issueType,
         details: issueDetails,
-        bus_name: 'Route 915', // Default since UI doesn't collect it yet
+        route_name: issueRoute,
+        bus_name: issueRoute,
         stop_name: null
       })
     })
@@ -449,360 +184,24 @@ const AccessRideApp = () => {
       .catch(err => console.error("Error submitting report", err));
   };
 
+  const handleOpenReport = () => {
+    if (selectedRoute) {
+      setIssueRoute(selectedRoute.route_name || selectedRoute.line || '');
+    }
+    setShowReportIssue(true);
+  };
+
   const closeReportModal = () => {
     setShowReportIssue(false);
     setTimeout(() => {
       setReportStep('SELECT_TYPE');
       setIssueType('');
       setIssueDetails('');
+      setIssueRoute('');
     }, 300);
   };
 
-  const crowdingStyle = (crowding) => {
-    if (crowding === 'low') return { bg: '#dcfce7', text: '#15803d' };
-    if (crowding === 'medium') return { bg: '#fef9c3', text: '#a16207' };
-    return { bg: '#fee2e2', text: '#b91c1c' };
-  };
-
-  const crowdingEmoji = (crowding) => {
-    if (crowding === 'low') return '🟢';
-    if (crowding === 'medium') return '🟡';
-    return '🔴';
-  };
-
-  // ─── HOME TAB ──────────────────────────────────────────────────────────────
-  const HomeTab = () => (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-
-      {/* Balance Card */}
-      <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
-        <Text style={s.cardTitle}>Your Balance</Text>
-        <Text style={s.bigPoints}>{points} points</Text>
-        <Text style={{ color: '#bbf7d0', fontSize: 13 }}>Ready to redeem at local partners</Text>
-      </View>
-
-      {/* Community Alerts */}
-      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={s.row}>
-          <Text style={s.iconMd}>🚨</Text>
-          <Text style={s.sectionTitle}>Community Alerts</Text>
-        </View>
-        {communityAlerts.map(alert => (
-          <View key={alert.id} style={s.alertBox}>
-            <View style={[s.rowBetween, { marginBottom: 2 }]}>
-              <Text style={s.alertRoute}>{alert.route}</Text>
-              <Text style={s.mutedSm}>{alert.time}</Text>
-            </View>
-            <Text style={s.alertIssue}>{alert.issue}</Text>
-            <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600', marginTop: 4 }}>+{alert.points} pts for reporter</Text>
-          </View>
-        ))}
-        <TouchableOpacity style={s.btnOrange} onPress={() => setShowReportIssue(true)}>
-          <Text style={s.btnText}>Report an Issue (+20 pts)</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Smart Routine Reminder */}
-      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={[s.row, { marginBottom: 10 }]}>
-          <Text style={s.iconMd}>🧠</Text>
-          <Text style={s.sectionTitle}>Smart Routine Reminder</Text>
-        </View>
-        <View style={s.reminderBox}>
-          <View style={s.row}>
-            <Text style={{ fontSize: 22, marginRight: 10 }}>⏰</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13, marginBottom: 2 }}>Your Regular Route Detected</Text>
-              <Text style={s.mutedSm}>Route 915 at 8:10 AM • Weekdays</Text>
-              <View style={s.quoteBox}>
-                <Text style={s.mutedSm}>💬 "Leave in 5 minutes to catch your usual 8:10 AM bus"</Text>
-              </View>
-              <Text style={s.mutedSm}>We noticed you take this route regularly. Would you like automatic reminders?</Text>
-            </View>
-          </View>
-        </View>
-        <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
-          <TouchableOpacity style={[s.btnHalf, s.btnGray]}>
-            <Text style={s.btnGrayText}>Not Now</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.btnHalf, s.btnGreen]}>
-            <Text style={s.btnText}>Enable Reminders</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={s.divider} />
-        <Text style={[s.mutedSm, { marginBottom: 4 }]}>✨ Smart features:</Text>
-        {['Calculates walking time to your stop', 'Adjusts for weather delays', 'Considers snow-day reports', 'Works with radius-based alerts'].map((f, i) => (
-          <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {f}</Text>
-        ))}
-      </View>
-
-      {/* Weekly Challenge */}
-      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={s.rowBetween}>
-          <Text style={s.sectionTitle}>Weekly Challenge</Text>
-          <Text style={{ fontSize: 22 }}>🎯</Text>
-        </View>
-        <Text style={{ fontWeight: '600', color: '#374151', fontSize: 14, marginTop: 6 }}>Peak Avoider</Text>
-        <Text style={s.mutedSm}>Take 5 off-peak rides (+10 pts each)</Text>
-        <View style={[s.row, { marginTop: 10 }]}>
-          <View style={s.progressTrack}>
-            <View style={[s.progressBar, { width: '60%' }]} />
-          </View>
-          <Text style={{ fontWeight: '700', color: '#374151', marginLeft: 8 }}>3/5</Text>
-        </View>
-        <Text style={[s.mutedSm, { marginTop: 6 }]}>🎁 +50 points bonus reward</Text>
-      </View>
-
-      {/* GPS Alerts */}
-      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={s.rowBetween}>
-          <View style={s.row}>
-            <Text style={s.iconMd}>📍</Text>
-            <Text style={s.sectionTitle}>Stop Approach Alerts</Text>
-          </View>
-          <TouchableOpacity onPress={() => setShowGpsSettings(true)}>
-            <Text style={{ color: GREEN, fontSize: 13, fontWeight: '500' }}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-        {gpsAlertEnabled ? (
-          <View>
-            <View style={s.gpsBadgeEnabled}>
-              <Text style={{ color: '#15803d', fontSize: 16, marginRight: 6 }}>✓</Text>
-              <Text style={{ color: '#15803d', fontWeight: '500', fontSize: 13 }}>Alerts enabled at {alertRadius}m</Text>
-            </View>
-            <Text style={[s.mutedSm, { marginTop: 4 }]}>Vibration, sound, and visual cues when approaching your stop</Text>
-          </View>
-        ) : (
-          <View>
-            <Text style={[s.mutedSm, { marginBottom: 10 }]}>Get notified when approaching your destination</Text>
-            <TouchableOpacity style={s.btnGreen} onPress={() => setShowGpsSettings(true)}>
-              <Text style={s.btnText}>Enable Alerts</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Recent Activity */}
-      <View style={[s.card, s.cardWhite, { marginBottom: 80 }]}>
-        <Text style={s.sectionTitle}>Recent Activity</Text>
-        <Text style={[s.mutedSm, { marginBottom: 10 }]}>Your last accessible ride</Text>
-        <View style={s.recentBox}>
-          <View>
-            <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }} numberOfLines={1} adjustsFontSizeToFit>Downtown → Durham college North campus</Text>
-            <Text style={s.mutedSm}>Route 915 • Platform 2</Text>
-            <Text style={{ color: '#15803d', fontWeight: '700', marginTop: 4 }}>+15 pts</Text>
-          </View>
-          <View style={[s.row, { marginTop: 6, flexWrap: 'wrap' }]}>
-            <Text style={s.mutedSm}>♿ Accessible route bonus</Text>
-            <Text style={[s.mutedSm, { marginHorizontal: 4 }]}>•</Text>
-            <Text style={s.mutedSm}>2 hours ago</Text>
-          </View>
-        </View>
-
-      </View>
-    </ScrollView>
-  );
-
-  // ─── ROUTES TAB ────────────────────────────────────────────────────────────
-  const RoutesTab = () => (
-    <ScrollView
-      style={s.tabContent}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
-    >
-      <View style={[s.row, { marginBottom: 16 }]}>
-        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
-          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={s.pageTitle}>Live Routes near you</Text>
-      </View>
-
-      {/* Filters */}
-      <View style={[s.row, { marginBottom: 16, gap: 10 }]}>
-        <TouchableOpacity
-          style={[s.filterChip, filterAccessible && s.filterChipActive]}
-          onPress={() => setFilterAccessible(!filterAccessible)}
-        >
-          <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]}>♿ Accessible</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.filterChip, filterLimited && s.filterChipActive]}
-          onPress={() => setFilterLimited(!filterLimited)}
-        >
-          <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]}>📍 Top 5</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-          <View style={[s.row, { flex: 1, alignItems: 'center' }]}>
-            <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
-            <View style={{ marginLeft: 8 }}>
-              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13 }}>Current Location</Text>
-              <Text style={s.mutedSm}>{location ? `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : 'Detecting...'}</Text>
-            </View>
-          </View>
-          <Text style={{ color: '#9ca3af', fontSize: 16, marginHorizontal: 8 }}>→</Text>
-          <View style={[s.row, { flex: 1, alignItems: 'center', justifyContent: 'flex-end' }]}>
-            <View style={{ alignItems: 'flex-end', marginRight: 8, flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: '#111827', fontSize: 13, textAlign: 'right' }} numberOfLines={1}>Search Radius</Text>
-              <Text style={s.mutedSm}>5 km</Text>
-            </View>
-            <View style={[s.dot, { backgroundColor: GREEN, flexShrink: 0 }]} />
-          </View>
-        </View>
-      </View>
-
-      {filteredRoutes.length === 0 ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
-          <Text style={{ color: '#6b7280' }}>No live buses found nearby</Text>
-        </View>
-      ) : (
-        filteredRoutes.map(route => {
-          const cs = crowdingStyle(route.crowding);
-          const selected = selectedRoute?.id === route.id;
-          return (
-            <TouchableOpacity
-              key={route.id}
-              style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: selected ? 2 : 1, borderColor: selected ? GREEN : '#e5e7eb' }]}
-              onPress={() => selectRoute(route)}
-            >
-              <View style={s.rowBetween}>
-                <View style={{ flex: 1 }}>
-                  <View style={[s.row, { justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }]}>
-                    <Text style={{ fontSize: 24, fontWeight: '700', color: GREEN }}>{route.eta}</Text>
-                    {route.accessible && <Text style={{ fontSize: 20 }}>♿</Text>}
-                  </View>
-                  <View style={{ marginBottom: 4 }}>
-                    <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
-                      {route.route_long_name === 'Unknown Route'
-                        ? (isNaN(route.route_name) ? route.route_name : `Route ${route.route_name}`)
-                        : route.route_long_name}
-                    </Text>
-                  </View>
-                  <Text style={s.mutedSm}>{route.route_name} • {(route.distance_m / 1000).toFixed(1)} km away</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ color: GREEN, fontWeight: '700' }}>+15 pts</Text>
-                  <View style={[s.badge, { backgroundColor: cs.bg, marginTop: 4 }]}>
-                    <Text style={{ color: cs.text, fontSize: 11, fontWeight: '600' }}>{crowdingEmoji(route.crowding)} {route.crowding}</Text>
-                  </View>
-                </View>
-              </View>
-              {selected && (
-                <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                  <TouchableOpacity style={s.btnGreen}>
-                    <Text style={s.btnText}>Start Tracking</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })
-      )}
-      <View style={{ height: 80 }} />
-    </ScrollView>
-  );
-
-  // ─── REWARDS TAB ───────────────────────────────────────────────────────────
-  const RewardsTab = () => (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={[s.row, { marginBottom: 16 }]}>
-        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
-          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={s.pageTitle}>Local Business Rewards</Text>
-      </View>
-
-      <View style={[s.card, s.gradientGreen, { marginBottom: 12 }]}>
-        <View style={s.rowBetween}>
-          <View>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>{points}</Text>
-            <Text style={{ color: '#bbf7d0', fontSize: 13 }}>Total Points</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff' }}>⚡{streak}</Text>
-            <Text style={{ color: '#bbf7d0', fontSize: 12 }}>Day Streak</Text>
-          </View>
-        </View>
-        <View style={[s.row, { marginTop: 14, gap: 8 }]}>
-          {[{ icon: '🏆', label: 'Level 5' }, { icon: '🎖️', label: '12 Badges' }, { icon: '📈', label: 'Top 15%' }].map((item, i) => (
-            <View key={i} style={s.statBadge}>
-              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-              <Text style={{ fontSize: 11, color: '#fff', marginTop: 4 }}>{item.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {rewards.map(reward => (
-        <View key={reward.id} style={[s.card, s.cardWhite, { marginBottom: 10, opacity: reward.claimed ? 0.6 : 1 }]}>
-          <View style={s.row}>
-            <Text style={{ fontSize: 34, marginRight: 12 }}>{reward.icon}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', color: '#111827' }}>{reward.name}</Text>
-              <Text style={{ color: GREEN, fontWeight: '600', fontSize: 13 }}>{reward.offer}</Text>
-              <Text style={s.mutedSm}>{reward.pts} points required</Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                s.redeemBtn,
-                reward.claimed || points < reward.pts ? s.redeemBtnDisabled : s.redeemBtnActive,
-              ]}
-              onPress={() => redeem(reward)}
-              disabled={reward.claimed || points < reward.pts}
-            >
-              <Text style={[s.redeemBtnText, (reward.claimed || points < reward.pts) && { color: '#9ca3af' }]}>
-                {reward.claimed ? 'Claimed' : points >= reward.pts ? 'Redeem' : 'Locked'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-      <View style={{ height: 80 }} />
-    </ScrollView>
-  );
-
-  // ─── ACHIEVEMENTS TAB ──────────────────────────────────────────────────────
-  const AchievementsTab = () => (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={[s.row, { marginBottom: 16 }]}>
-        <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
-          <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={s.pageTitle}>Achievements & Badges</Text>
-      </View>
-
-      {achievements.map(achievement => {
-        const pct = (achievement.progress / achievement.total) * 100;
-        const done = achievement.progress >= achievement.total;
-        return (
-          <View key={achievement.id} style={[s.card, s.cardWhite, { marginBottom: 10, borderWidth: done ? 2 : 1, borderColor: done ? GREEN : '#e5e7eb' }]}>
-            <View style={[s.row, { marginBottom: 10 }]}>
-              <Text style={{ fontSize: 34, marginRight: 12, opacity: done ? 1 : 0.4 }}>{achievement.icon}</Text>
-              <View style={{ flex: 1 }}>
-                <View style={s.row}>
-                  <Text style={{ fontWeight: '700', color: '#111827', marginRight: 6 }}>{achievement.name}</Text>
-                  {done && <Text style={{ color: '#22c55e' }}>✓</Text>}
-                </View>
-                <Text style={s.mutedSm}>{achievement.desc}</Text>
-              </View>
-            </View>
-            <View style={s.rowBetween}>
-              <Text style={s.mutedSm}>Progress</Text>
-              <Text style={{ fontWeight: '700', color: done ? GREEN : '#6b7280', fontSize: 13 }}>{achievement.progress}/{achievement.total}</Text>
-            </View>
-            <View style={s.progressTrack}>
-              <View style={[s.progressBar, { width: `${pct}%`, backgroundColor: done ? GREEN : '#9ca3af' }]} />
-            </View>
-          </View>
-        );
-      })}
-      <View style={{ height: 80 }} />
-    </ScrollView>
-  );
-
-  // ─── REPORT ISSUE MODAL ────────────────────────────────────────────────────
+  // ── Report Issue Modal Helpers ────────────────────────────────────────────
   const IssueOption = ({ value, label, sub, icon }) => (
     <TouchableOpacity
       style={[s.radioRow, issueType === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
@@ -819,7 +218,7 @@ const AccessRideApp = () => {
     </TouchableOpacity>
   );
 
-  // ─── GPS SETTINGS MODAL ────────────────────────────────────────────────────
+  // ── GPS Settings Modal Helpers ────────────────────────────────────────────
   const RadiusOption = ({ value, label }) => (
     <TouchableOpacity
       style={[s.radioRow, alertRadius === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
@@ -839,56 +238,6 @@ const AccessRideApp = () => {
       <Text style={{ flex: 1, fontWeight: '500', color: '#111827', fontSize: 13 }}>{label}</Text>
       <Switch value={true} trackColor={{ true: GREEN }} />
     </View>
-  );
-
-  // ─── SCHEDULES TAB ──────────────────────────────────────────────────────────
-  const SchedulesTab = () => (
-    <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={[s.rowBetween, { marginBottom: 16 }]}>
-        <Text style={s.pageTitle}>My Schedules</Text>
-        <TouchableOpacity style={s.btnGreen} onPress={openNewSchedule}>
-          <Text style={[s.btnText, { paddingHorizontal: 16 }]}>+ New</Text>
-        </TouchableOpacity>
-      </View>
-
-      {schedules.length === 0 ? (
-        <View style={{ alignItems: 'center', marginTop: 40 }}>
-          <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
-          <Text style={[s.mutedSm, { textAlign: 'center' }]}>No schedules yet. Create one to get started!</Text>
-        </View>
-      ) : (
-        schedules.map(sched => {
-          let h = Math.floor(sched.scheduled_time / 60);
-          let m = sched.scheduled_time % 60;
-          let ampm = h >= 12 ? 'PM' : 'AM';
-          let displayHour = h % 12 || 12;
-          let timeString = `${displayHour}:${m < 10 ? '0' + m : m} ${ampm}`;
-
-          return (
-            <View key={sched.id} style={[s.card, s.cardWhite, { marginBottom: 10 }]}>
-              <View style={s.rowBetween}>
-                <View>
-                  <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827' }}>{sched.schedule_label}</Text>
-                  <Text style={s.mutedSm}>{sched.scheduled_days} at {timeString}</Text>
-                  {sched.recommended_route_id && (
-                    <Text style={[s.mutedSm, { marginTop: 4, color: GREEN, fontWeight: '600' }]}>✨ Recommended: {sched.recommended_route_id}</Text>
-                  )}
-                </View>
-                <View style={[s.row, { gap: 14 }]}>
-                  <TouchableOpacity onPress={() => openEditSchedule(sched)}>
-                    <Text style={{ color: GREEN, fontWeight: '600' }}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => deleteSchedule(sched.id)}>
-                    <Text style={{ color: '#ef4444', fontWeight: '600' }}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          );
-        })
-      )}
-      <View style={{ height: 80 }} />
-    </ScrollView>
   );
 
   // ─── HOW IT WORKS MODAL ────────────────────────────────────────────────────
@@ -931,11 +280,11 @@ const AccessRideApp = () => {
 
       {/* Main Content */}
       <View style={{ flex: 1, backgroundColor: BG }}>
-        {tab === 'home' && <HomeTab />}
-        {tab === 'routes' && <RoutesTab />}
-        {tab === 'schedules' && <SchedulesTab />}
-        {tab === 'rewards' && <RewardsTab />}
-        {tab === 'achievements' && <AchievementsTab />}
+        {tab === 'home' && <HomeTab points={points} communityAlerts={communityAlerts} gpsAlertEnabled={gpsAlertEnabled} alertRadius={alertRadius} handleOpenReport={handleOpenReport} setShowGpsSettings={setShowGpsSettings} />}
+        {tab === 'routes' && <RoutesTab location={location} filteredRoutes={filteredRoutes} refreshing={refreshing} onRefresh={onRefresh} selectedRoute={selectedRoute} selectRoute={selectRoute} filterAccessible={filterAccessible} filterLimited={filterLimited} setTab={setTab} setFilterAccessible={setFilterAccessible} setFilterLimited={setFilterLimited} />}
+        {tab === 'schedules' && <SchedulesTab setTab={setTab} />}
+        {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
+        {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
       </View>
 
       {/* Bottom Nav */}
@@ -993,7 +342,28 @@ const AccessRideApp = () => {
             {reportStep === 'ENTER_DETAILS' && (
               <>
                 <Text style={s.modalTitle}>Provide Details</Text>
-                <Text style={[s.mutedSm, { marginBottom: 12 }]}>Add specific details to help other riders.</Text>
+                
+                <Text style={s.fieldLabel}>Which Route?</Text>
+                <View style={[s.row, { flexWrap: 'wrap', gap: 6, marginBottom: 8 }]}>
+                  {['915', '302', '900', '405'].map(r => (
+                    <TouchableOpacity 
+                      key={r} 
+                      style={[s.filterChip, issueRoute.includes(r) && s.filterChipActive]}
+                      onPress={() => setIssueRoute(`Route ${r}`)}
+                    >
+                      <Text style={[s.filterChipText, issueRoute.includes(r) && s.filterChipTextActive]}>{r}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[s.textInput, { height: 45, marginBottom: 12 }]}
+                  placeholder="Enter Route Name (e.g. Route 915)"
+                  placeholderTextColor="#9ca3af"
+                  value={issueRoute}
+                  onChangeText={setIssueRoute}
+                />
+
+                <Text style={s.fieldLabel}>Issue Details</Text>
                 <TextInput
                   style={s.textInput}
                   multiline
@@ -1010,8 +380,12 @@ const AccessRideApp = () => {
                   <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setReportStep('SELECT_TYPE')}>
                     <Text style={s.btnGrayText}>Back</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={handleReportNext}>
-                    <Text style={s.btnText}>Review</Text>
+                  <TouchableOpacity 
+                    style={[s.btnHalf, (issueType && issueRoute) ? s.btnGreen : s.btnGrayDisabled]} 
+                    onPress={handleReportNext}
+                    disabled={!issueType || !issueRoute}
+                  >
+                    <Text style={[s.btnText, (!issueType || !issueRoute) && { color: '#9ca3af' }]}>Review</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -1023,9 +397,13 @@ const AccessRideApp = () => {
                 <Text style={[s.mutedSm, { marginBottom: 16 }]}>Please review your report before submitting.</Text>
                 <View style={{ backgroundColor: '#f9fafb', padding: 14, borderRadius: 10, marginBottom: 16 }}>
                   <Text style={[s.mutedSm, { marginBottom: 4 }]}>Issue Type</Text>
-                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 12 }}>
+                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>
                     {issueType === 'bus-missed' ? "Bus didn't arrive" : issueType === 'wheelchair ramps-out' ? "Wheelchair ramps out of service" : issueType === 'crowding' ? "Heavy crowding" : issueType === 'bike-rack-full' ? "Bike rack is full" : issueType === 'ramp-unsafe' ? "Ramp landing not safe to descend" : "Other issue"}
                   </Text>
+                  
+                  <Text style={[s.mutedSm, { marginBottom: 4 }]}>Route</Text>
+                  <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 8 }}>{issueRoute}</Text>
+
                   <Text style={[s.mutedSm, { marginBottom: 4 }]}>Details</Text>
                   <Text style={{ color: '#374151', fontSize: 13 }}>
                     {issueDetails || 'No additional details provided.'}
@@ -1131,434 +509,27 @@ const AccessRideApp = () => {
 
       {/* Settings Modal */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { if (settingsSection) setSettingsSection(null); else setShowSettings(false); }} />
-          <View style={{ backgroundColor: BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' }}>
-            {/* Settings Header */}
-            <View style={{ backgroundColor: GREEN, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              {settingsSection ? (
-                <TouchableOpacity onPress={() => setSettingsSection(null)}>
-                  <Text style={{ color: '#fff', fontSize: 16 }}>← Back</Text>
-                </TouchableOpacity>
-              ) : <View style={{ width: 50 }} />}
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>
-                {settingsSection === 'appearance' ? '🎨 Appearance'
-                  : settingsSection === 'account' ? '👤 Account & Security'
-                    : settingsSection === 'accessibility' ? '♿ Accessibility'
-                      : settingsSection === 'language' ? '🌐 Language & Region'
-                        : settingsSection === 'privacy' ? '🔒 Privacy'
-                          : settingsSection === 'support' ? '💬 Support'
-                            : '⚙️ Settings'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowSettings(false)}>
-                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ paddingHorizontal: 16, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-
-              {/* ── MAIN MENU ── */}
-              {!settingsSection && (
-                <View style={{ paddingBottom: 40 }}>
-                  {[
-                    { key: 'appearance', icon: '🎨', label: 'Appearance', sub: 'Dark mode, font size, contrast' },
-                    { key: 'account', icon: '👤', label: 'Account & Security', sub: 'Profile, password, account' },
-                    { key: 'accessibility', icon: '♿', label: 'Accessibility', sub: 'Mobility, screen reader, alerts' },
-                    { key: 'language', icon: '🌐', label: 'Language & Region', sub: `${appLanguage}` },
-                    { key: 'privacy', icon: '🔒', label: 'Privacy', sub: 'Location, data sharing' },
-                    { key: 'support', icon: '💬', label: 'Support', sub: 'How to use the app' },
-                  ].map(item => (
-                    <TouchableOpacity key={item.key} style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]} onPress={() => setSettingsSection(item.key)}>
-                      <Text style={{ fontSize: 26, marginRight: 14 }}>{item.icon}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>{item.label}</Text>
-                        <Text style={s.mutedSm}>{item.sub}</Text>
-                      </View>
-                      <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {/* ── APPEARANCE ── */}
-              {settingsSection === 'appearance' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🌓 Dark Mode</Text>
-                    {[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['system', '📱 System Default']].map(([val, label]) => (
-                      <TouchableOpacity key={val} style={[s.radioRow, colorMode === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setColorMode(val)}>
-                        <View style={[s.radioCircle, colorMode === val && { borderColor: GREEN }]}>
-                          {colorMode === val && <View style={s.radioDot} />}
-                        </View>
-                        <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🔡 Font Size</Text>
-                    {[['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']].map(([val, label]) => (
-                      <TouchableOpacity key={val} style={[s.radioRow, fontSize === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setFontSize(val)}>
-                        <View style={[s.radioCircle, fontSize === val && { borderColor: GREEN }]}>
-                          {fontSize === val && <View style={s.radioDot} />}
-                        </View>
-                        <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.fieldLabel}>⬛ High-Contrast Mode</Text>
-                        <Text style={s.mutedSm}>Improves visibility for accessibility</Text>
-                      </View>
-                      <Switch value={highContrast} onValueChange={setHighContrast} trackColor={{ true: GREEN }} />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* ── ACCOUNT & SECURITY ── */}
-              {settingsSection === 'account' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 10 }]}>👤 Profile Information</Text>
-                    {[['Name', profileName], ['Phone', profilePhone], ['Email', profileEmail]].map(([label, val]) => (
-                      <View key={label} style={{ marginBottom: 12 }}>
-                        <Text style={[s.mutedSm, { marginBottom: 4 }]}>{label}</Text>
-                        <View style={{ backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={{ color: '#111827', fontSize: 14 }}>{val}</Text>
-                          <Text style={{ color: GREEN, fontSize: 13, fontWeight: '600' }}>Edit</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                  <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
-                    <Text style={{ fontSize: 20, marginRight: 12 }}>🔑</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '600', color: '#111827' }}>Change Password</Text>
-                      <Text style={s.mutedSm}>Update your account password</Text>
-                    </View>
-                    <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[s.card, { marginBottom: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fecaca' }]}>
-                    <Text style={{ fontSize: 20, marginRight: 12 }}>🗑️</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '600', color: '#b91c1c' }}>Delete Account</Text>
-                      <Text style={[s.mutedSm, { color: '#ef4444' }]}>Permanently remove your data</Text>
-                    </View>
-                    <Text style={{ color: '#fca5a5', fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* ── ACCESSIBILITY ── */}
-              {settingsSection === 'accessibility' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 10 }]}>🦽 Mobility Preferences</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Wheelchair Accessible Vehicle</Text>
-                        <Text style={s.mutedSm}>Only show accessible transport options</Text>
-                      </View>
-                      <Switch value={wheelchairVehicle} onValueChange={setWheelchairVehicle} trackColor={{ true: GREEN }} />
-                    </View>
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 10 }]}>💬 Communication Preferences</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Text-Only Communication</Text>
-                        <Text style={s.mutedSm}>Receive all updates via text/SMS</Text>
-                      </View>
-                      <Switch value={textOnlyComms} onValueChange={setTextOnlyComms} trackColor={{ true: GREEN }} />
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Voice Call Preferred</Text>
-                        <Text style={s.mutedSm}>Receive alerts via voice call</Text>
-                      </View>
-                      <Switch value={voiceCall} onValueChange={setVoiceCall} trackColor={{ true: GREEN }} />
-                    </View>
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.fieldLabel}>👁️ Screen Reader Optimization</Text>
-                        <Text style={s.mutedSm}>Enhance compatibility with screen readers</Text>
-                      </View>
-                      <Switch value={screenReader} onValueChange={setScreenReader} trackColor={{ true: GREEN }} />
-                    </View>
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 10 }]}>🔔 Notifications</Text>
-                    {[
-                      ['Ride Status Alerts', 'Updates on your booked rides', rideAlerts, setRideAlerts],
-                      ['Promotions & Updates', 'News and special offers', promoAlerts, setPromoAlerts],
-                      ['Emergency Alerts', 'Critical safety notifications', emergencyAlerts, setEmergencyAlerts],
-                    ].map(([label, sub, val, setter]) => (
-                      <View key={label} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>{label}</Text>
-                          <Text style={s.mutedSm}>{sub}</Text>
-                        </View>
-                        <Switch value={val} onValueChange={setter} trackColor={{ true: GREEN }} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* ── LANGUAGE & REGION ── */}
-              {settingsSection === 'language' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🌐 App Language</Text>
-                    {['English', 'Français', 'Español', 'العربية', 'हिन्दी', '中文'].map(lang => (
-                      <TouchableOpacity key={lang} style={[s.radioRow, appLanguage === lang && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setAppLanguage(lang)}>
-                        <View style={[s.radioCircle, appLanguage === lang && { borderColor: GREEN }]}>
-                          {appLanguage === lang && <View style={s.radioDot} />}
-                        </View>
-                        <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{lang}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* ── PRIVACY ── */}
-              {settingsSection === 'privacy' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <Text style={[s.fieldLabel, { marginBottom: 12 }]}>📍 Location Permissions</Text>
-                    {[['always', '🔒 Always'], ['while_using', '📱 While Using App'], ['never', '🚫 Never']].map(([val, label]) => (
-                      <TouchableOpacity key={val} style={[s.radioRow, locationPerm === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setLocationPerm(val)}>
-                        <View style={[s.radioCircle, locationPerm === val && { borderColor: GREEN }]}>
-                          {locationPerm === val && <View style={s.radioDot} />}
-                        </View>
-                        <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.fieldLabel}>📊 Data Sharing Preferences</Text>
-                        <Text style={s.mutedSm}>Share anonymized usage data to improve the app</Text>
-                      </View>
-                      <Switch value={dataSharing} onValueChange={setDataSharing} trackColor={{ true: GREEN }} />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* ── SUPPORT ── */}
-              {settingsSection === 'support' && (
-                <View style={{ paddingBottom: 40 }}>
-                  <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]} onPress={() => { setShowSettings(false); setShowDiagram(true); }}>
-                    <Text style={{ fontSize: 24, marginRight: 14 }}>📖</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>How to Use the App</Text>
-                      <Text style={s.mutedSm}>Step-by-step guide to AccessRide features</Text>
-                    </View>
-                    <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
-                    <Text style={{ fontSize: 24, marginRight: 14 }}>📧</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>Contact Support</Text>
-                      <Text style={s.mutedSm}>support@accessride.ca</Text>
-                    </View>
-                    <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
-                    <Text style={{ fontSize: 24, marginRight: 14 }}>⭐</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>Rate the App</Text>
-                      <Text style={s.mutedSm}>Share your experience on the App Store</Text>
-                    </View>
-                    <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
-                  </TouchableOpacity>
-                  <View style={[s.card, { backgroundColor: '#f0fdf4', marginBottom: 10, alignItems: 'center' }]}>
-                    <Text style={[s.mutedSm, { color: '#15803d' }]}>AccessRide v2.4.1 • © 2025 AccessRide Inc.</Text>
-                  </View>
-                </View>
-              )}
-
-            </ScrollView>
-          </View>
-        </SafeAreaView>
+        <SettingsModal
+          showSettings={showSettings} setShowSettings={setShowSettings}
+          settingsSection={settingsSection} setSettingsSection={setSettingsSection}
+          colorMode={colorMode} setColorMode={setColorMode}
+          fontSize={fontSize} setFontSize={setFontSize}
+          highContrast={highContrast} setHighContrast={setHighContrast}
+          profileName={profileName} profilePhone={profilePhone} profileEmail={profileEmail}
+          wheelchairVehicle={wheelchairVehicle} setWheelchairVehicle={setWheelchairVehicle}
+          textOnlyComms={textOnlyComms} setTextOnlyComms={setTextOnlyComms}
+          voiceCall={voiceCall} setVoiceCall={setVoiceCall}
+          screenReader={screenReader} setScreenReader={setScreenReader}
+          rideAlerts={rideAlerts} setRideAlerts={setRideAlerts}
+          promoAlerts={promoAlerts} setPromoAlerts={setPromoAlerts}
+          emergencyAlerts={emergencyAlerts} setEmergencyAlerts={setEmergencyAlerts}
+          appLanguage={appLanguage} setAppLanguage={setAppLanguage}
+          locationPerm={locationPerm} setLocationPerm={setLocationPerm}
+          dataSharing={dataSharing} setDataSharing={setDataSharing}
+          setShowDiagram={setShowDiagram}
+        />
       </Modal>
 
-      {/* Schedule Modal */}
-      <Modal visible={showScheduleModal} transparent animationType="fade" onRequestClose={() => setShowScheduleModal(false)}>
-        <KeyboardAvoidingView behavior="padding" style={s.overlay}>
-          <TouchableOpacity style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} activeOpacity={1} onPress={() => { Keyboard.dismiss(); setShowScheduleModal(false); }} />
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 40 }} style={{ width: '100%', maxWidth: 480 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <TouchableOpacity style={s.modalBox} activeOpacity={1}>
-              <Text style={s.modalTitle}>{editingScheduleId ? 'Edit Schedule' : 'New Schedule'}</Text>
-
-              <Text style={[s.fieldLabel, { marginTop: 10 }]}>Schedule Name</Text>
-              <TextInput
-                style={[s.textInput, { height: 48, marginBottom: 16 }]}
-                value={schedLabel}
-                onChangeText={setSchedLabel}
-                placeholder="E.g. Morning Commute"
-              />
-
-              <Text style={s.fieldLabel}>Origin</Text>
-              <TouchableOpacity
-                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]}
-                onPress={() => setSelectingFor('origin')}
-              >
-                <Text style={{ color: selectingFor === 'origin' ? GREEN : '#111827', fontWeight: selectingFor === 'origin' ? '700' : '400' }}>
-                  {schedOrigin || "Select Origin"}
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={s.fieldLabel}>Destination</Text>
-              <TouchableOpacity
-                style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]}
-                onPress={() => setSelectingFor('dest')}
-              >
-                <Text style={{ color: selectingFor === 'dest' ? GREEN : '#111827', fontWeight: selectingFor === 'dest' ? '700' : '400' }}>
-                  {schedDest || "Select Destination"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Interactive Search & Map Area */}
-              <View style={{ marginBottom: 20, backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                <Text style={[s.fieldLabel, { fontSize: 13 }]}>Find {selectingFor === 'origin' ? 'Origin' : 'Destination'} 📍</Text>
-
-                <TextInput
-                  style={[s.textInput, { height: 44, marginBottom: 8 }]}
-                  placeholder="Type an address to search..."
-                  value={searchQuery}
-                  onChangeText={handleSearchTyping}
-                />
-
-                {/* Autocomplete Dropdown */}
-                {showSearchDropdown && searchResults.length > 0 && (
-                  <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', maxHeight: 150, marginBottom: 8, overflow: 'hidden' }}>
-                    <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                      {searchResults.map((result, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={{ padding: 12, borderBottomWidth: idx < searchResults.length - 1 ? 1 : 0, borderBottomColor: '#f3f4f6' }}
-                          onPress={() => selectSearchResult(result)}
-                        >
-                          <Text style={{ fontWeight: '600', color: '#111827' }}>{result.properties.name || result.properties.street || "Location"}</Text>
-                          <Text style={{ fontSize: 11, color: '#6b7280' }}>
-                            {[result.properties.city, result.properties.state].filter(Boolean).join(', ')}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                {/* Map View */}
-                <View style={{ height: 200, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#d1d5db' }}>
-                  <MapView
-                    style={{ flex: 1 }}
-                    region={mapRegion}
-                    onRegionChangeComplete={(reg) => {/* optional: reverse geocode on map drag */ }}
-                  >
-                    {/* The Searched Pin */}
-                    {selectedPin && (
-                      <Marker
-                        coordinate={{ latitude: selectedPin.lat, longitude: selectedPin.lon }}
-                        pinColor="blue"
-                        title={selectedPin.name}
-                        description="Searched Location"
-                      />
-                    )}
-
-                    {/* The Closest Stops */}
-                    {mapStops.map((stop) => (
-                      <Marker
-                        key={`stop-${stop.stop_id}`}
-                        coordinate={{ latitude: stop.stop_lat, longitude: stop.stop_lon }}
-                        pinColor={stop.wheelchair_boarding === 1 ? "green" : "red"}
-                        title={stop.stop_name}
-                        description={stop.wheelchair_boarding === 1 ? "♿ Accessible Stop" : "⚠️ Accessibility Unknown/No"}
-                        onCalloutPress={() => setStopFromMap(stop)}
-                      />
-                    ))}
-                  </MapView>
-
-                  {/* Instructions Overlay */}
-                  {mapStops.length > 0 && (
-                    <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', padding: 8, borderRadius: 8 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '600', textAlign: 'center' }}>Tap a bus stop pin to select it.</Text>
-                      <Text style={{ fontSize: 10, textAlign: 'center', color: '#6b7280' }}>Green pins = ♿ Accessible</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              <Text style={s.fieldLabel}>Day</Text>
-              <View style={[s.row, { gap: 8, marginBottom: 16, flexWrap: 'wrap' }]}>
-                {['Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                  <TouchableOpacity
-                    key={d}
-                    style={[s.badge, schedDay === d ? { backgroundColor: GREEN } : { backgroundColor: '#e5e7eb' }]}
-                    onPress={() => setSchedDay(d)}
-                  >
-                    <Text style={{ color: schedDay === d ? '#fff' : '#374151', fontWeight: '600' }}>{d}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={s.fieldLabel}>Time</Text>
-              <View style={[s.row, { gap: 8, marginBottom: 24 }]}>
-                <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                  <TextInput
-                    style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
-                    value={schedHour}
-                    onChangeText={h => setSchedHour(h.replace(/[^0-9]/g, ''))}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                </View>
-                <Text style={{ fontSize: 24, fontWeight: '700' }}>:</Text>
-                <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                  <TextInput
-                    style={{ height: 48, backgroundColor: '#f9fafb', textAlign: 'center', fontSize: 18, fontWeight: '600' }}
-                    value={schedMinute}
-                    onChangeText={m => setSchedMinute(m.replace(/[^0-9]/g, ''))}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                </View>
-                <View style={[s.row, { backgroundColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }]}>
-                  <TouchableOpacity
-                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' }}
-                    onPress={() => setSchedAmPm('AM')}
-                  >
-                    <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : '#6b7280' }}>AM</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' }}
-                    onPress={() => setSchedAmPm('PM')}
-                  >
-                    <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : '#6b7280' }}>PM</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={[s.row, { gap: 10 }]}>
-                <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowScheduleModal(false)}>
-                  <Text style={s.btnGrayText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
-                  <Text style={s.btnText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* How It Works Modal */}
       <Modal visible={showDiagram} transparent animationType="fade" onRequestClose={() => setShowDiagram(false)}>
@@ -1608,110 +579,5 @@ const AccessRideApp = () => {
     </SafeAreaView>
   );
 };
-
-// ─── STYLES ─────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: GREEN },
-  header: { backgroundColor: GREEN, paddingHorizontal: 16, paddingVertical: 14 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  howBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-
-  tabContent: { flex: 1, paddingHorizontal: 14, paddingTop: 14 },
-
-  card: { borderRadius: 16, padding: 18, marginBottom: 0 },
-  cardWhite: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  gradientGreen: { backgroundColor: GREEN },
-
-  cardTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
-  bigPoints: { fontSize: 34, fontWeight: '700', color: '#fff', marginBottom: 4 },
-
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginLeft: 6 },
-  pageTitle: { fontSize: 19, fontWeight: '700', color: '#111827' },
-  mutedSm: { fontSize: 11, color: '#6b7280' },
-
-  row: { flexDirection: 'row', alignItems: 'center' },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-
-  alertBox: { borderLeftWidth: 4, borderLeftColor: '#f97316', backgroundColor: '#fff7ed', borderRadius: 8, padding: 10, marginBottom: 8 },
-  alertRoute: { fontWeight: '600', color: '#111827', fontSize: 13 },
-  alertIssue: { fontSize: 11, color: '#374151' },
-
-  btnOrange: { backgroundColor: '#f97316', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginTop: 8 },
-  btnGreen: { backgroundColor: GREEN, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnGray: { backgroundColor: '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnGrayDisabled: { backgroundColor: '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnHalf: { flex: 1 },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  btnGrayText: { color: '#374151', fontWeight: '700', fontSize: 14 },
-
-  reminderBox: { backgroundColor: '#f5f3ff', borderRadius: 10, padding: 14, marginBottom: 10 },
-  quoteBox: { backgroundColor: '#fff', borderRadius: 8, padding: 8, marginVertical: 6 },
-  divider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 10 },
-
-  progressTrack: { flex: 1, height: 8, backgroundColor: '#e5e7eb', borderRadius: 99, overflow: 'hidden', marginTop: 6 },
-  progressBar: { height: 8, backgroundColor: '#22c55e', borderRadius: 99 },
-
-  grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  quickAction: { width: '48%', borderWidth: 2, borderRadius: 10, padding: 14, alignItems: 'flex-start' },
-
-  gpsBadgeEnabled: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', padding: 12, borderRadius: 10, marginTop: 8 },
-  recentBox: { borderLeftWidth: 4, borderLeftColor: '#22c55e', backgroundColor: '#f0fdf4', borderRadius: 8, padding: 14 },
-
-  dot: { width: 10, height: 10, borderRadius: 99 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-
-  statBadge: { flex: 1, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: 10, alignItems: 'center' },
-  redeemBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  redeemBtnActive: { backgroundColor: GREEN },
-  redeemBtnDisabled: { backgroundColor: '#e5e7eb' },
-  redeemBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-  radioRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#d1d5db', borderRadius: 10, padding: 12, marginBottom: 8 },
-  radioCircle: { width: 18, height: 18, borderRadius: 99, borderWidth: 2, borderColor: '#9ca3af', alignItems: 'center', justifyContent: 'center' },
-  radioDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: GREEN },
-
-  bottomNav: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingVertical: 10, paddingHorizontal: 8, paddingBottom: 16 },
-  navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 10 },
-  navItemActive: { backgroundColor: GREEN },
-  navLabel: { fontSize: 11, fontWeight: '500', color: '#6b7280', marginTop: 2 },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modalBox: { backgroundColor: '#fff', borderRadius: 20, padding: 22, width: '100%', maxWidth: 480 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  infoBanner: { borderRadius: 10, padding: 14, marginBottom: 12 },
-  fieldLabel: { fontWeight: '600', color: '#111827', fontSize: 14, marginBottom: 8 },
-
-  stepRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  stepCircle: { width: 44, height: 44, borderRadius: 99, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  stepNum: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  detailBox: { backgroundColor: '#f9fafb', borderRadius: 8, padding: 10 },
-
-  iconMd: { fontSize: 20 },
-
-  qrBox: { backgroundColor: '#f3f4f6', borderRadius: 10, padding: 14, width: '100%', marginBottom: 8 },
-  qrInner: { backgroundColor: '#fff', padding: 24, borderRadius: 8, alignItems: 'center', marginBottom: 6 },
-  textInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', height: 100, textAlignVertical: 'top' },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  filterChipActive: {
-    backgroundColor: GREEN,
-    borderColor: GREEN,
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: '#374151',
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-});
 
 export default AccessRideApp;
