@@ -295,7 +295,7 @@ const SettingsModal = ({
                 <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
               <View style={[s.card, { backgroundColor: c.successBg, marginBottom: 10, alignItems: 'center' }]}>
-                <Text style={[s.mutedSm, { color: c.successText }]}>AccessRide v2.4.1 • © 2025 AccessRide Inc.</Text>
+                <Text style={[s.mutedSm, { color: c.successText }]}>AccessRide v2.4.1 • © 2026 AccessRide Inc. Made with ❤️ by Jolin, Jayden, and Andrew</Text>
               </View>
             </View>
           )}
