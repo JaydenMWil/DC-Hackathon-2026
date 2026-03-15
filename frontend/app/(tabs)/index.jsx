@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  StatusBar,
   Switch,
   TextInput,
   RefreshControl,
@@ -14,12 +13,14 @@ import {
   KeyboardAvoidingView,
   Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
 // ─── Local imports ───────────────────────────────────────────────────────────
 import { s, GREEN, BG } from '../../components/_styles';
 import { QRCode, crowdingStyle, crowdingEmoji, rewards, achievements } from '../../components/_helpers';
+import * as Haptics from 'expo-haptics';
 import HomeTab from '../../components/tabs/HomeTab';
 import RoutesTab from '../../components/tabs/RoutesTab';
 import RewardsTab from '../../components/tabs/RewardsTab';
@@ -31,6 +32,15 @@ import useProximityTracker from '../../components/hooks/useProximityTracker';
 import ProximityAlertOverlay from '../../components/ProximityAlertOverlay';
 
 const AccessRideApp = () => {
+  return (
+    <SafeAreaProvider>
+      <MainApp />
+    </SafeAreaProvider>
+  );
+};
+
+const MainApp = () => {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('home');
   const [points, setPoints] = useState(245);
   const [streak, setStreak] = useState(5);
@@ -232,6 +242,13 @@ const AccessRideApp = () => {
     }, 300);
   };
 
+  const handleTabPress = (key) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    setTab(key);
+  };
+
   // ── Report Issue Modal Helpers ────────────────────────────────────────────
   const IssueOption = ({ value, label, sub, icon }) => (
     <TouchableOpacity
@@ -297,12 +314,13 @@ const AccessRideApp = () => {
   );
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <StatusBar backgroundColor={GREEN} barStyle="light-content" />
-
-      {/* Header */}
-      <View style={s.header}>
-        <View style={s.rowBetween}>
+    <View style={{ flex: 1, backgroundColor: GREEN }}>
+      <SafeAreaView style={[s.safeArea, { backgroundColor: 'transparent' }]} edges={['right', 'left']}>
+      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
+      
+        {/* Header */}
+        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+          <View style={s.rowBetween}>
           <View>
             <Text style={s.headerTitle}>AccessRide</Text>
             <Text style={s.headerSub}>Inclusive Transit Companion</Text>
@@ -356,9 +374,10 @@ const AccessRideApp = () => {
         {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
         {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
       </View>
+      </SafeAreaView>
 
-      {/* Bottom Nav */}
-      <View style={s.bottomNav}>
+      {/* Bottom Nav - outside SafeAreaView so it stretches to device bottom */}
+      <View style={[s.bottomNav, { paddingBottom: insets.bottom }]}>
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'routes', icon: '🚇', label: 'Routes' },
@@ -369,7 +388,7 @@ const AccessRideApp = () => {
           <TouchableOpacity
             key={item.key}
             style={[s.navItem, tab === item.key && s.navItemActive]}
-            onPress={() => setTab(item.key)}
+            onPress={() => handleTabPress(item.key)}
             accessibilityLabel={`${item.label} tab`}
             accessibilityRole="tab"
             accessibilityState={{ selected: tab === item.key }}
@@ -672,7 +691,7 @@ const AccessRideApp = () => {
         onDismiss={() => setProximityAlertVisible(false)}
         onStopTracking={stopTracking}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
