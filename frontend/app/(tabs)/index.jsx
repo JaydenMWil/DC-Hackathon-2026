@@ -18,7 +18,8 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import * as Location from 'expo-location';
 
 // ─── Local imports ───────────────────────────────────────────────────────────
-import { s, GREEN, BG } from '../../components/_styles';
+import { useStyles, GREEN, BG } from '../../components/_styles';
+import { ThemeProvider, useTheme } from '../../components/ThemeContext';
 import { QRCode, crowdingStyle, crowdingEmoji, rewards, achievements } from '../../components/_helpers';
 import * as Haptics from 'expo-haptics';
 import HomeTab from '../../components/tabs/HomeTab';
@@ -34,12 +35,21 @@ import ProximityAlertOverlay from '../../components/ProximityAlertOverlay';
 const AccessRideApp = () => {
   return (
     <SafeAreaProvider>
-      <MainApp />
+      <ThemeProvider>
+        <MainApp />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 };
 
 const MainApp = () => {
+  const { s, theme } = useStyles();
+  const {
+    colorMode, setColorMode,
+    fontSize, setFontSize,
+    highContrast, setHighContrast
+  } = useTheme();
+
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('home');
   const [points, setPoints] = useState(245);
@@ -67,9 +77,6 @@ const MainApp = () => {
   // ── Settings state ──────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSection, setSettingsSection] = useState(null);
-  const [colorMode, setColorMode] = useState('system');
-  const [fontSize, setFontSize] = useState('medium');
-  const [highContrast, setHighContrast] = useState(false);
   const [profileName] = useState('Alex Johnson');
   const [profilePhone] = useState('+1 (905) 555-0142');
   const [profileEmail] = useState('alex.j@email.com');
@@ -252,14 +259,14 @@ const MainApp = () => {
   // ── Report Issue Modal Helpers ────────────────────────────────────────────
   const IssueOption = ({ value, label, sub, icon }) => (
     <TouchableOpacity
-      style={[s.radioRow, issueType === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
+      style={[s.radioRow, issueType === value && { borderColor: GREEN, backgroundColor: theme.isDark ? 'rgba(0,118,71,0.2)' : '#f0fdf4' }]}
       onPress={() => setIssueType(value)}
     >
       <View style={[s.radioCircle, issueType === value && { borderColor: GREEN }]}>
         {issueType === value && <View style={s.radioDot} />}
       </View>
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>{label}</Text>
+        <Text style={{ fontWeight: '500', color: theme.colors.text, fontSize: 14 }}>{label}</Text>
         <Text style={s.mutedSm}>{sub}</Text>
       </View>
       <Text style={{ fontSize: 20 }}>{icon}</Text>
@@ -269,21 +276,21 @@ const MainApp = () => {
   // ── GPS Settings Modal Helpers ────────────────────────────────────────────
   const RadiusOption = ({ value, label }) => (
     <TouchableOpacity
-      style={[s.radioRow, alertRadius === value && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]}
+      style={[s.radioRow, alertRadius === value && { borderColor: GREEN, backgroundColor: theme.isDark ? 'rgba(0,118,71,0.2)' : '#f0fdf4' }]}
       onPress={() => setAlertRadius(value)}
     >
       <View style={[s.radioCircle, alertRadius === value && { borderColor: GREEN }]}>
         {alertRadius === value && <View style={s.radioDot} />}
       </View>
-      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{value} meters</Text>
+      <Text style={{ flex: 1, fontWeight: '500', color: theme.colors.text, marginLeft: 10 }}>{value} meters</Text>
       <Text style={s.mutedSm}>{label}</Text>
     </TouchableOpacity>
   );
 
   const AlertTypeRow = ({ icon, label, value, onChange }) => (
-    <View style={[s.radioRow, { borderColor: '#e5e7eb' }]}>
+    <View style={[s.radioRow, { borderColor: theme.colors.border }]}>
       <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
-      <Text style={{ flex: 1, fontWeight: '500', color: '#111827', fontSize: 13 }}>{label}</Text>
+      <Text style={{ flex: 1, fontWeight: '500', color: theme.colors.text, fontSize: 13 }}>{label}</Text>
       <Switch 
         value={value} 
         onValueChange={onChange}
@@ -300,10 +307,10 @@ const MainApp = () => {
           <Text style={s.stepNum}>{num}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>{title}</Text>
+          <Text style={{ fontWeight: '700', color: theme.colors.text, marginBottom: 4 }}>{title}</Text>
           <Text style={[s.mutedSm, { marginBottom: 6 }]}>{desc}</Text>
           <View style={s.detailBox}>
-            <Text style={{ fontSize: 11, color: '#374151' }}>{detail}</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textSecondary }}>{detail}</Text>
           </View>
         </View>
       </View>
@@ -314,9 +321,9 @@ const MainApp = () => {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: GREEN }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.headerBg }}>
       <SafeAreaView style={[s.safeArea, { backgroundColor: 'transparent' }]} edges={['right', 'left']}>
-      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
+      <StatusBar style={theme.isDark ? "light" : "light"} translucent={true} backgroundColor="transparent" />
       
         {/* Header */}
         <View style={[s.header, { paddingTop: insets.top + 14 }]}>
@@ -331,13 +338,13 @@ const MainApp = () => {
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
+            <Text style={{ color: theme.colors.textOnGreen, fontSize: 13, fontWeight: '500' }}>⚙️ Settings</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Main Content */}
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         {tab === 'home' && (
           <HomeTab 
             points={points} 
@@ -377,7 +384,7 @@ const MainApp = () => {
       </SafeAreaView>
 
       {/* Bottom Nav - outside SafeAreaView so it stretches to device bottom */}
-      <View style={[s.bottomNav, { paddingBottom: insets.bottom }]}>
+      <View style={[s.bottomNav, { paddingBottom: insets.bottom + 10 }]}>
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'routes', icon: '🚇', label: 'Routes' },
@@ -394,7 +401,7 @@ const MainApp = () => {
             accessibilityState={{ selected: tab === item.key }}
           >
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-            <Text style={[s.navLabel, tab === item.key && { color: '#fff' }]}>{item.label}</Text>
+            <Text style={[s.navLabel, tab === item.key && { color: theme.colors.textOnGreen }]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -406,9 +413,9 @@ const MainApp = () => {
             {reportStep === 'SELECT_TYPE' && (
               <>
                 <Text style={s.modalTitle}>Report an Issue</Text>
-                <View style={[s.infoBanner, { backgroundColor: '#f0fdf4' }]}>
-                  <Text style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Help your community by reporting issues</Text>
-                  <Text style={{ fontSize: 11, color: '#15803d' }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
+                <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(22,101,52,0.2)' : '#f0fdf4' }]}>
+                  <Text style={{ fontSize: 13, color: theme.colors.successText, marginBottom: 4 }}>Help your community by reporting issues</Text>
+                  <Text style={{ fontSize: 11, color: theme.colors.successText }}>Earn +20 points and progress toward the "Transit Helper" badge</Text>
                 </View>
                 <IssueOption value="bus-missed" label="Bus didn't arrive" sub="Snow, delays, or cancellations" icon="🚫" />
                 <IssueOption value="wheelchair ramps-out" label="Wheelchair ramps out of service" sub="Accessibility barrier" icon="♿" />
@@ -447,20 +454,20 @@ const MainApp = () => {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput
+                 <TextInput
                   style={[s.textInput, { height: 45, marginBottom: 12 }]}
                   placeholder="Enter Route Name (e.g. Route 915)"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.colors.textSecondary}
                   value={issueRoute}
                   onChangeText={setIssueRoute}
                 />
 
                 <Text style={s.fieldLabel}>Issue Details</Text>
-                <TextInput
+                 <TextInput
                   style={s.textInput}
                   multiline
                   placeholder="E.g., North entrance ramp is blocked by snow..."
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={theme.colors.textSecondary}
                   value={issueDetails}
                   onChangeText={text => setIssueDetails(text.slice(0, 200))}
                   maxLength={200}
@@ -517,9 +524,9 @@ const MainApp = () => {
                 <Text style={{ fontSize: 56, marginBottom: 12 }}>🎉</Text>
                 <Text style={[s.modalTitle, { textAlign: 'center' }]}>Report Submitted!</Text>
                 <Text style={[s.mutedSm, { textAlign: 'center', marginBottom: 16 }]}>Thank you for helping keep the community informed.</Text>
-                <View style={[s.infoBanner, { backgroundColor: '#dcfce7', width: '100%', alignItems: 'center' }]}>
-                  <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 18 }}>+20 Points</Text>
-                  <Text style={{ color: '#166534', fontSize: 12, marginTop: 4 }}>Added to your balance</Text>
+                <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(22,101,52,0.2)' : '#dcfce7', width: '100%', alignItems: 'center' }]}>
+                  <Text style={{ color: theme.colors.successText, fontWeight: '700', fontSize: 18 }}>+20 Points</Text>
+                  <Text style={{ color: theme.colors.successText, fontSize: 12, marginTop: 4 }}>Added to your balance</Text>
                 </View>
                 <TouchableOpacity style={[s.btnGreen, { width: '100%', marginTop: 20 }]} onPress={closeReportModal}>
                   <Text style={s.btnText}>Done</Text>
@@ -535,8 +542,8 @@ const MainApp = () => {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowReward(null)}>
           <TouchableOpacity style={[s.modalBox, { alignItems: 'center' }]} activeOpacity={1}>
             <Text style={{ fontSize: 56, marginBottom: 12 }}>{showReward?.icon}</Text>
-            <Text style={s.modalTitle}>Reward Claimed!</Text>
-            <Text style={{ color: '#6b7280', marginBottom: 4 }}>{showReward?.name}</Text>
+             <Text style={s.modalTitle}>Reward Claimed!</Text>
+            <Text style={{ color: theme.colors.textSecondary, marginBottom: 4 }}>{showReward?.name}</Text>
             <Text style={{ color: GREEN, fontWeight: '700', fontSize: 17, marginBottom: 16 }}>{showReward?.offer}</Text>
             <View style={[s.qrBox]}>
               <View style={s.qrInner}>
@@ -557,13 +564,13 @@ const MainApp = () => {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowGpsSettings(false)}>
           <ScrollView style={[s.modalBox, { maxHeight: '85%' }]}>
             <TouchableOpacity activeOpacity={1}>
-              <Text style={[s.modalTitle, { marginBottom: 14 }]}>Stop Approach Alert Settings</Text>
-              <View style={[s.infoBanner, { backgroundColor: '#eff6ff', marginBottom: 16 }]}>
-                <View style={s.row}>
+               <Text style={[s.modalTitle, { marginBottom: 14 }]}>Stop Approach Alert Settings</Text>
+              <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(30,58,95,0.2)' : '#eff6ff', marginBottom: 16 }]}>
+                 <View style={s.row}>
                   <Text style={{ fontSize: 22, marginRight: 10 }}>📍</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '600', color: '#1e3a5f', marginBottom: 4 }}>Radius-Based GPS Alert</Text>
-                    <Text style={{ fontSize: 12, color: '#1d4ed8' }}>Tracks your location and sends alerts at customizable distances when approaching your stop</Text>
+                    <Text style={{ fontWeight: '600', color: theme.isDark ? '#93c5fd' : '#1e3a5f', marginBottom: 4 }}>Radius-Based GPS Alert</Text>
+                    <Text style={{ fontSize: 12, color: theme.isDark ? '#60a5fa' : '#1d4ed8' }}>Tracks your location and sends alerts at customizable distances when approaching your stop</Text>
                   </View>
                 </View>
               </View>
@@ -590,8 +597,8 @@ const MainApp = () => {
                 value={visualPopupAlert} 
                 onChange={setVisualPopupAlert} 
               />
-              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 14 }]}>
-                <Text style={{ fontWeight: '600', color: '#111827', marginBottom: 6 }}>✨ Universal Design Benefits</Text>
+               <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(22,101,52,0.2)' : '#f0fdf4', marginTop: 14 }]}>
+                <Text style={{ fontWeight: '600', color: theme.colors.text, marginBottom: 6 }}>✨ Universal Design Benefits</Text>
                 {[
                   'Helps visually impaired riders navigate confidently',
                   'Reduces anxiety on unfamiliar routes',
@@ -619,9 +626,6 @@ const MainApp = () => {
         <SettingsModal
           showSettings={showSettings} setShowSettings={setShowSettings}
           settingsSection={settingsSection} setSettingsSection={setSettingsSection}
-          colorMode={colorMode} setColorMode={setColorMode}
-          fontSize={fontSize} setFontSize={setFontSize}
-          highContrast={highContrast} setHighContrast={setHighContrast}
           profileName={profileName} profilePhone={profilePhone} profileEmail={profileEmail}
           wheelchairVehicle={wheelchairVehicle} setWheelchairVehicle={setWheelchairVehicle}
           textOnlyComms={textOnlyComms} setTextOnlyComms={setTextOnlyComms}
@@ -654,14 +658,14 @@ const MainApp = () => {
                 <View style={s.stepRow}>
                   <View style={s.stepCircle}><Text style={s.stepNum}>6</Text></View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 4 }}>🎁 Redeem at Local Businesses</Text>
+                    <Text style={{ fontWeight: '700', color: theme.colors.text, marginBottom: 4 }}>🎁 Redeem at Local Businesses</Text>
                     <Text style={[s.mutedSm, { marginBottom: 6 }]}>Exchange points for real rewards from community partners</Text>
-                    <View style={s.detailBox}><Text style={{ fontSize: 11, color: '#374151' }}>Rewards: Free coffee, restaurant discounts, museum passes, local shop coupons</Text></View>
+                    <View style={s.detailBox}><Text style={{ fontSize: 11, color: theme.colors.textSecondary }}>Rewards: Free coffee, restaurant discounts, museum passes, local shop coupons</Text></View>
                   </View>
                 </View>
               </View>
-              <View style={[s.infoBanner, { backgroundColor: '#f0fdf4', marginTop: 20 }]}>
-                <Text style={{ fontWeight: '700', color: '#111827', marginBottom: 10 }}>✨ Core Features</Text>
+               <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(22,101,52,0.2)' : '#f0fdf4', marginTop: 20 }]}>
+                <Text style={{ fontWeight: '700', color: theme.colors.text, marginBottom: 10 }}>✨ Core Features</Text>
                 <View style={s.grid2}>
                   {[
                     ['🧠', 'Smart reminders'], ['📍', 'GPS stop alerts'],
@@ -671,7 +675,7 @@ const MainApp = () => {
                   ].map(([icon, label], i) => (
                     <View key={i} style={[s.row, { width: '48%', marginBottom: 8 }]}>
                       <Text style={{ fontSize: 16, marginRight: 6 }}>{icon}</Text>
-                      <Text style={{ fontSize: 12, color: '#374151' }}>{label}</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>{label}</Text>
                     </View>
                   ))}
                 </View>

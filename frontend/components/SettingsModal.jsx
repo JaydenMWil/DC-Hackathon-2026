@@ -1,13 +1,11 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, SafeAreaView } from 'react-native';
-import { s, GREEN, BG } from './_styles';
+import { useStyles, GREEN } from './_styles';
+import { useTheme } from './ThemeContext';
 
 const SettingsModal = ({
   showSettings, setShowSettings,
   settingsSection, setSettingsSection,
-  colorMode, setColorMode,
-  fontSize, setFontSize,
-  highContrast, setHighContrast,
   profileName, profilePhone, profileEmail,
   wheelchairVehicle, setWheelchairVehicle,
   textOnlyComms, setTextOnlyComms,
@@ -21,20 +19,30 @@ const SettingsModal = ({
   dataSharing, setDataSharing,
   setShowDiagram,
 }) => {
+  const { s, theme } = useStyles();
+  const {
+    colorMode, setColorMode,
+    fontSize, setFontSize,
+    highContrast, setHighContrast
+  } = useTheme();
+
   if (!showSettings) return null;
 
+  const c = theme.colors;
+  const f = theme.fonts;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.overlay }}>
       <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { if (settingsSection) setSettingsSection(null); else setShowSettings(false); }} />
-      <View style={{ backgroundColor: BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' }}>
+      <View style={{ backgroundColor: c.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' }}>
         {/* Settings Header */}
-        <View style={{ backgroundColor: GREEN, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ backgroundColor: c.headerBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           {settingsSection ? (
             <TouchableOpacity onPress={() => setSettingsSection(null)}>
               <Text style={{ color: '#fff', fontSize: 16 }}>← Back</Text>
             </TouchableOpacity>
           ) : <View style={{ width: 50 }} />}
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>
+          <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700' }}>
             {settingsSection === 'appearance' ? '🎨 Appearance'
               : settingsSection === 'account' ? '👤 Account & Security'
               : settingsSection === 'accessibility' ? '♿ Accessibility'
@@ -62,39 +70,53 @@ const SettingsModal = ({
                 { key: 'support', icon: '💬', label: 'Support', sub: 'How to use the app' },
               ].map(item => (
                 <TouchableOpacity key={item.key} style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]} onPress={() => setSettingsSection(item.key)}>
-                  <Text style={{ fontSize: 26, marginRight: 14 }}>{item.icon}</Text>
+                  <Text style={{ fontSize: f.iconLg, marginRight: 14 }}>{item.icon}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>{item.label}</Text>
+                    <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }}>{item.label}</Text>
                     <Text style={s.mutedSm}>{item.sub}</Text>
                   </View>
-                  <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
+                  <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
           {/* ── APPEARANCE ── */}
-          {settingsSection === 'appearance' && (
+           {settingsSection === 'appearance' && (
             <View style={{ paddingBottom: 40 }}>
+              {/* Live Preview Card */}
+              <View style={[s.card, s.cardWhite, { marginBottom: 16, borderLeftWidth: 4, borderLeftColor: GREEN }]}>
+                <Text style={[s.fieldLabel, { fontSize: f.label, color: GREEN, marginBottom: 8, textTransform: 'uppercase' }]}>Themed Preview</Text>
+                <View style={s.rowBetween}>
+                  <View>
+                    <Text style={[s.pageTitle, { fontSize: f.title }]}>Hello world!</Text>
+                    <Text style={s.mutedSm}>This is how your app will look.</Text>
+                  </View>
+                  <View style={[s.dot, { backgroundColor: GREEN, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ color: '#fff', fontSize: 12 }}>⭐</Text>
+                  </View>
+                </View>
+              </View>
+
               <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
                 <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🌓 Dark Mode</Text>
                 {[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['system', '📱 System Default']].map(([val, label]) => (
-                  <TouchableOpacity key={val} style={[s.radioRow, colorMode === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setColorMode(val)}>
+                  <TouchableOpacity key={val} style={[s.radioRow, colorMode === val && { borderColor: GREEN, backgroundColor: c.radioSelected }]} onPress={() => setColorMode(val)}>
                     <View style={[s.radioCircle, colorMode === val && { borderColor: GREEN }]}>
                       {colorMode === val && <View style={s.radioDot} />}
                     </View>
-                    <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
+                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10 }}>{label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
               <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
                 <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🔡 Font Size</Text>
                 {[['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']].map(([val, label]) => (
-                  <TouchableOpacity key={val} style={[s.radioRow, fontSize === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setFontSize(val)}>
+                  <TouchableOpacity key={val} style={[s.radioRow, fontSize === val && { borderColor: GREEN, backgroundColor: c.radioSelected }]} onPress={() => setFontSize(val)}>
                     <View style={[s.radioCircle, fontSize === val && { borderColor: GREEN }]}>
                       {fontSize === val && <View style={s.radioDot} />}
                     </View>
-                    <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
+                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10 }}>{label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -118,9 +140,9 @@ const SettingsModal = ({
                 {[['Name', profileName], ['Phone', profilePhone], ['Email', profileEmail]].map(([label, val]) => (
                   <View key={label} style={{ marginBottom: 12 }}>
                     <Text style={[s.mutedSm, { marginBottom: 4 }]}>{label}</Text>
-                    <View style={{ backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: '#111827', fontSize: 14 }}>{val}</Text>
-                      <Text style={{ color: GREEN, fontSize: 13, fontWeight: '600' }}>Edit</Text>
+                    <View style={{ backgroundColor: c.inputBg, borderRadius: 10, borderWidth: 1, borderColor: c.inputBorder, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ color: c.text, fontSize: f.body }}>{val}</Text>
+                      <Text style={{ color: GREEN, fontSize: f.subtitle, fontWeight: '600' }}>Edit</Text>
                     </View>
                   </View>
                 ))}
@@ -128,18 +150,18 @@ const SettingsModal = ({
               <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
                 <Text style={{ fontSize: 20, marginRight: 12 }}>🔑</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '600', color: '#111827' }}>Change Password</Text>
+                  <Text style={{ fontWeight: '600', color: c.text }}>Change Password</Text>
                   <Text style={s.mutedSm}>Update your account password</Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
+                <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.card, { marginBottom: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fecaca' }]}>
                 <Text style={{ fontSize: 20, marginRight: 12 }}>🗑️</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '600', color: '#b91c1c' }}>Delete Account</Text>
-                  <Text style={[s.mutedSm, { color: '#ef4444' }]}>Permanently remove your data</Text>
+                  <Text style={{ fontWeight: '600', color: c.dangerText }}>Delete Account</Text>
+                  <Text style={[s.mutedSm, { color: c.dangerText }]}>Permanently remove your data</Text>
                 </View>
-                <Text style={{ color: '#fca5a5', fontSize: 18 }}>›</Text>
+                <Text style={{ color: c.dangerText, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -151,7 +173,7 @@ const SettingsModal = ({
                 <Text style={[s.fieldLabel, { marginBottom: 10 }]}>🦽 Mobility Preferences</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Wheelchair Accessible Vehicle</Text>
+                    <Text style={{ fontWeight: '500', color: c.text, fontSize: f.body }}>Wheelchair Accessible Vehicle</Text>
                     <Text style={s.mutedSm}>Only show accessible transport options</Text>
                   </View>
                   <Switch value={wheelchairVehicle} onValueChange={setWheelchairVehicle} trackColor={{ true: GREEN }} />
@@ -161,14 +183,14 @@ const SettingsModal = ({
                 <Text style={[s.fieldLabel, { marginBottom: 10 }]}>💬 Communication Preferences</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Text-Only Communication</Text>
+                    <Text style={{ fontWeight: '500', color: c.text, fontSize: f.body }}>Text-Only Communication</Text>
                     <Text style={s.mutedSm}>Receive all updates via text/SMS</Text>
                   </View>
                   <Switch value={textOnlyComms} onValueChange={setTextOnlyComms} trackColor={{ true: GREEN }} />
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>Voice Call Preferred</Text>
+                    <Text style={{ fontWeight: '500', color: c.text, fontSize: f.body }}>Voice Call Preferred</Text>
                     <Text style={s.mutedSm}>Receive alerts via voice call</Text>
                   </View>
                   <Switch value={voiceCall} onValueChange={setVoiceCall} trackColor={{ true: GREEN }} />
@@ -192,7 +214,7 @@ const SettingsModal = ({
                 ].map(([label, sub, val, setter]) => (
                   <View key={label} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '500', color: '#111827', fontSize: 14 }}>{label}</Text>
+                      <Text style={{ fontWeight: '500', color: c.text, fontSize: f.body }}>{label}</Text>
                       <Text style={s.mutedSm}>{sub}</Text>
                     </View>
                     <Switch value={val} onValueChange={setter} trackColor={{ true: GREEN }} />
@@ -208,11 +230,11 @@ const SettingsModal = ({
               <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
                 <Text style={[s.fieldLabel, { marginBottom: 12 }]}>🌐 App Language</Text>
                 {['English', 'Français', 'Español', 'العربية', 'हिन्दी', '中文'].map(lang => (
-                  <TouchableOpacity key={lang} style={[s.radioRow, appLanguage === lang && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setAppLanguage(lang)}>
+                  <TouchableOpacity key={lang} style={[s.radioRow, appLanguage === lang && { borderColor: GREEN, backgroundColor: c.radioSelected }]} onPress={() => setAppLanguage(lang)}>
                     <View style={[s.radioCircle, appLanguage === lang && { borderColor: GREEN }]}>
                       {appLanguage === lang && <View style={s.radioDot} />}
                     </View>
-                    <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{lang}</Text>
+                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10 }}>{lang}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -225,11 +247,11 @@ const SettingsModal = ({
               <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
                 <Text style={[s.fieldLabel, { marginBottom: 12 }]}>📍 Location Permissions</Text>
                 {[['always', '🔒 Always'], ['while_using', '📱 While Using App'], ['never', '🚫 Never']].map(([val, label]) => (
-                  <TouchableOpacity key={val} style={[s.radioRow, locationPerm === val && { borderColor: GREEN, backgroundColor: '#f0fdf4' }]} onPress={() => setLocationPerm(val)}>
+                  <TouchableOpacity key={val} style={[s.radioRow, locationPerm === val && { borderColor: GREEN, backgroundColor: c.radioSelected }]} onPress={() => setLocationPerm(val)}>
                     <View style={[s.radioCircle, locationPerm === val && { borderColor: GREEN }]}>
                       {locationPerm === val && <View style={s.radioDot} />}
                     </View>
-                    <Text style={{ flex: 1, fontWeight: '500', color: '#111827', marginLeft: 10 }}>{label}</Text>
+                    <Text style={{ flex: 1, fontWeight: '500', color: c.text, marginLeft: 10 }}>{label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -249,31 +271,31 @@ const SettingsModal = ({
           {settingsSection === 'support' && (
             <View style={{ paddingBottom: 40 }}>
               <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]} onPress={() => { setShowSettings(false); setShowDiagram(true); }}>
-                <Text style={{ fontSize: 24, marginRight: 14 }}>📖</Text>
+                <Text style={{ fontSize: f.iconLg, marginRight: 14 }}>📖</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>How to Use the App</Text>
+                  <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }}>How to Use the App</Text>
                   <Text style={s.mutedSm}>Step-by-step guide to AccessRide features</Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
+                <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 24, marginRight: 14 }}>📧</Text>
+                <Text style={{ fontSize: f.iconLg, marginRight: 14 }}>📧</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>Contact Support</Text>
+                  <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }}>Contact Support</Text>
                   <Text style={s.mutedSm}>support@accessride.ca</Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
+                <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.card, s.cardWhite, { marginBottom: 10, flexDirection: 'row', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 24, marginRight: 14 }}>⭐</Text>
+                <Text style={{ fontSize: f.iconLg, marginRight: 14 }}>⭐</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>Rate the App</Text>
+                  <Text style={{ fontWeight: '700', color: c.text, fontSize: f.button }}>Rate the App</Text>
                   <Text style={s.mutedSm}>Share your experience on the App Store</Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 18 }}>›</Text>
+                <Text style={{ color: c.textSecondary, fontSize: f.title }}>›</Text>
               </TouchableOpacity>
-              <View style={[s.card, { backgroundColor: '#f0fdf4', marginBottom: 10, alignItems: 'center' }]}>
-                <Text style={[s.mutedSm, { color: '#15803d' }]}>AccessRide v2.4.1 • © 2025 AccessRide Inc.</Text>
+              <View style={[s.card, { backgroundColor: c.successBg, marginBottom: 10, alignItems: 'center' }]}>
+                <Text style={[s.mutedSm, { color: c.successText }]}>AccessRide v2.4.1 • © 2025 AccessRide Inc.</Text>
               </View>
             </View>
           )}
