@@ -66,6 +66,16 @@ const MainApp = () => {
   const [issueDetails, setIssueDetails] = useState('');
   const [issueRoute, setIssueRoute] = useState('');
 
+  // ── Smart Reminder state ──────────────────────────────────────────────────
+  const [smartRemindersEnabled, setSmartRemindersEnabled] = useState(false);
+  const [safetyBuffer, setSafetyBuffer] = useState(5); // minutes
+  const [isSimulatingIssue, setIsSimulatingIssue] = useState(false);
+  const [showRerouteModal, setShowRerouteModal] = useState(false);
+  const [alternativeRoute, setAlternativeRoute] = useState(null);
+
+  // Mock regular route destination (Durham College North Campus)
+  const regularRouteStop = { latitude: 43.9444, longitude: -78.8917 }; 
+
   // ── Proximity Alert state ──────────────────────────────────────────────────
   const [vibrationAlert, setVibrationAlert] = useState(true);
   const [soundCueAlert, setSoundCueAlert] = useState(true);
@@ -140,6 +150,38 @@ const MainApp = () => {
     await fetchLiveRoutes();
     setRefreshing(false);
   };
+
+  // ── Smart Reminder Logic ──────────────────────────────────────────────────
+  const walkingInfo = useMemo(() => {
+    if (!location || !smartRemindersEnabled) return null;
+    
+    // Distance in meters (simplified Euclidean for mock)
+    const dx = (location.coords.longitude - regularRouteStop.longitude) * 85000; // rough lon-to-meter
+    const dy = (location.coords.latitude - regularRouteStop.latitude) * 111000; // rough lat-to-meter
+    const distanceM = Math.sqrt(dx*dx + dy*dy);
+    
+    const walkingTimeMin = Math.round(distanceM / 80); // 80m/min pace
+    const totalBufferMin = walkingTimeMin + safetyBuffer;
+    
+    // Mock bus at 8:10 AM
+    return {
+      distanceM,
+      walkingTimeMin,
+      totalBufferMin,
+      timeToLeaveStr: `${totalBufferMin} minutes`
+    };
+  }, [location, smartRemindersEnabled, safetyBuffer]);
+
+  // Handle Reroute Simulation
+  useEffect(() => {
+    if (isSimulatingIssue && smartRemindersEnabled) {
+      // Find an alternative from live routes
+      const alt = liveRoutes.find(r => r.route_name !== '915' && r.accessible) || liveRoutes[0];
+      setAlternativeRoute(alt);
+      setShowRerouteModal(true);
+      setIsSimulatingIssue(false);
+    }
+  }, [isSimulatingIssue, smartRemindersEnabled, liveRoutes]);
 
   useEffect(() => {
     (async () => {
@@ -356,6 +398,13 @@ const MainApp = () => {
             isTracking={isTracking}
             distanceM={distanceM}
             trackedBus={trackedBus}
+            // Smart Reminder props
+            smartRemindersEnabled={smartRemindersEnabled}
+            setSmartRemindersEnabled={setSmartRemindersEnabled}
+            safetyBuffer={safetyBuffer}
+            setSafetyBuffer={setSafetyBuffer}
+            walkingInfo={walkingInfo}
+            setIsSimulatingIssue={setIsSimulatingIssue}
           />
         )}
         {tab === 'routes' && (
@@ -695,6 +744,61 @@ const MainApp = () => {
         onDismiss={() => setProximityAlertVisible(false)}
         onStopTracking={stopTracking}
       />
+
+      {/* Smart Reroute Modal */}
+      <Modal visible={showRerouteModal} transparent animationType="slide" onRequestClose={() => setShowRerouteModal(false)}>
+        <View style={s.overlay}>
+          <View style={[s.modalBox, { borderTopWidth: 8, borderTopColor: '#f97316' }]}>
+            <View style={[s.row, { marginBottom: 12 }]}>
+              <Text style={{ fontSize: 32, marginRight: 12 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.modalTitle, { color: '#c2410c', marginBottom: 2 }]}>Accessibility Alert</Text>
+                <Text style={[s.mutedSm, { fontWeight: '700', color: '#f97316' }]}>ROUTE 915 ISSUE DETECTED</Text>
+              </View>
+            </View>
+            
+            <View style={[s.infoBanner, { backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fdba74' }]}>
+              <Text style={{ fontSize: 14, color: '#9a3412', lineHeight: 20 }}>
+                A community report indicates the <Text style={{ fontWeight: '700' }}>wheelchair ramp</Text> on your usual Route 915 is currently out of service.
+              </Text>
+            </View>
+
+            <Text style={[s.fieldLabel, { marginTop: 16 }]}>Suggested Alternative</Text>
+            <View style={[s.card, s.cardWhite, { borderWidth: 2, borderColor: GREEN, marginBottom: 20 }]}>
+              <View style={s.rowBetween}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '700', color: theme.colors.text, fontSize: 16 }}>
+                    {alternativeRoute?.route_long_name || 'Alternative Route'}
+                  </Text>
+                  <Text style={s.mutedSm}>Departs in {alternativeRoute?.eta || '8 min'} • Platform 4</Text>
+                  <View style={[s.row, { marginTop: 6 }]}>
+                    <Text style={{ fontSize: 12, color: theme.colors.text }}>♿ Verified Accessible</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 28 }}>🚇</Text>
+              </View>
+            </View>
+
+            <View style={[s.row, { gap: 10 }]}>
+              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowRerouteModal(false)}>
+                <Text style={s.btnGrayText}>Dismiss</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[s.btnHalf, s.btnGreen]} 
+                onPress={() => {
+                  setTab('routes');
+                  setShowRerouteModal(false);
+                  setPoints(p => p + 10);
+                  // Auto-select for demo
+                  if (alternativeRoute) selectRoute(alternativeRoute);
+                }}
+              >
+                <Text style={s.btnText}>Switch & Earn +10 pts</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

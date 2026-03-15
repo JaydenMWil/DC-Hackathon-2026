@@ -2,7 +2,14 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useStyles, GREEN } from '../_styles';
 
-const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings, isTracking, distanceM, trackedBus }) => {
+const HomeTab = ({ 
+  points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings, 
+  isTracking, distanceM, trackedBus,
+  // Smart Reminder props
+  smartRemindersEnabled, setSmartRemindersEnabled,
+  safetyBuffer, setSafetyBuffer,
+  walkingInfo, setIsSimulatingIssue
+}) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 
@@ -68,42 +75,93 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
 
       {/* Smart Routine Reminder */}
       <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
-        <View style={[s.row, { marginBottom: 10 }]}>
-          <Text style={s.iconMd}>🧠</Text>
-          <Text style={s.sectionTitle}>Smart Routine Reminder</Text>
+        <View style={s.rowBetween}>
+          <View style={s.row}>
+            <Text style={s.iconMd}>🧠</Text>
+            <Text style={s.sectionTitle}>Smart Routine Reminder</Text>
+          </View>
+          {smartRemindersEnabled && (
+            <TouchableOpacity 
+              onPress={() => {
+                const next = safetyBuffer >= 15 ? 5 : safetyBuffer + 5;
+                setSafetyBuffer(next);
+              }}
+              style={[s.row, { backgroundColor: c.successBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}
+            >
+              <Text style={{ fontSize: 13, marginRight: 4 }}>⚙️</Text>
+              <Text style={{ color: c.successText, fontWeight: '600', fontSize: 12 }}>+{safetyBuffer}m</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={s.reminderBox}>
+
+        <View style={[s.reminderBox, smartRemindersEnabled && { borderLeftWidth: 4, borderLeftColor: GREEN }]}>
           <View style={s.row}>
             <Text style={{ fontSize: 22, marginRight: 10 }}>⏰</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: c.text, fontSize: 13, marginBottom: 2 }}>Your Regular Route Detected</Text>
+              <Text style={{ fontWeight: '600', color: c.text, fontSize: 13, marginBottom: 2 }}>
+                {smartRemindersEnabled ? 'Next Reminder Active' : 'Your Regular Route Detected'}
+              </Text>
               <Text style={s.mutedSm}>Route 915 at 8:10 AM • Weekdays</Text>
-              <View style={s.quoteBox}>
-                <Text style={s.mutedSm}>💬 "Leave in 5 minutes to catch your usual 8:10 AM bus"</Text>
-              </View>
-              <Text style={s.mutedSm}>We noticed you take this route regularly. Would you like automatic reminders?</Text>
+              
+              {smartRemindersEnabled && walkingInfo ? (
+                <View style={[s.quoteBox, { backgroundColor: c.successBg, borderColor: GREEN, borderWidth: 1 }]}>
+                  <Text style={{ fontWeight: '700', color: GREEN, fontSize: 13 }}>
+                    💬 Leave in {walkingInfo.walkingTimeMin} min + {safetyBuffer}m buffer
+                  </Text>
+                  <Text style={[s.mutedSm, { marginTop: 2 }]}>
+                    Total time to leave: {walkingInfo.totalBufferMin} min
+                  </Text>
+                </View>
+              ) : (
+                <View style={s.quoteBox}>
+                  <Text style={s.mutedSm}>💬 "Leave in 5 minutes to catch your usual 8:10 AM bus"</Text>
+                </View>
+              )}
+              
+              {!smartRemindersEnabled && (
+                <Text style={s.mutedSm}>We noticed you take this route regularly. Would you like automatic reminders?</Text>
+              )}
             </View>
           </View>
         </View>
-        <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
-          <TouchableOpacity 
-            style={[s.btnHalf, s.btnGray]}
-            accessibilityLabel="Not now"
-            accessibilityRole="button"
-          >
-            <Text style={s.btnGrayText}>Not Now</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[s.btnHalf, s.btnGreen]}
-            accessibilityLabel="Enable Reminders"
-            accessibilityRole="button"
-          >
-            <Text style={s.btnText}>Enable Reminders</Text>
-          </TouchableOpacity>
-        </View>
+
+        {!smartRemindersEnabled ? (
+          <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
+            <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => {}}>
+              <Text style={s.btnGrayText}>Not Now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[s.btnHalf, s.btnGreen]}
+              onPress={() => setSmartRemindersEnabled(true)}
+            >
+              <Text style={s.btnText}>Enable Reminders</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ gap: 8, marginBottom: 10 }}>
+            <TouchableOpacity 
+              style={[s.btnGreen, { backgroundColor: '#f97316' }]}
+              onPress={() => setIsSimulatingIssue(true)}
+            >
+              <Text style={s.btnText}>DEMO: Simulate Route 915 Issue 🚨</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={s.btnGray}
+              onPress={() => setSmartRemindersEnabled(false)}
+            >
+              <Text style={s.btnGrayText}>Disable Reminders</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={s.divider} />
         <Text style={[s.mutedSm, { marginBottom: 4 }]}>✨ Smart features:</Text>
-        {['Calculates walking time to your stop', 'Adjusts for weather delays', 'Considers snow-day reports', 'Works with radius-based alerts'].map((f, i) => (
+        {[
+          `Calculates walking time to your stop (${walkingInfo ? Math.round(walkingInfo.distanceM) + 'm' : 'calculating...'})`,
+          `Adjusts for ${safetyBuffer}m safety buffer ⚙️`,
+          'Automatically suggests alternatives on issue detection',
+          'Works with community-reported barrier alerts'
+        ].map((f, i) => (
           <Text key={i} style={[s.mutedSm, { marginBottom: 2 }]}>• {f}</Text>
         ))}
       </View>
