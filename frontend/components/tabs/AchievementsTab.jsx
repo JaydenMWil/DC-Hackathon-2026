@@ -5,7 +5,12 @@ import { s, GREEN } from '../_styles';
 const AchievementsTab = ({ achievements, setTab }) => (
   <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
     <View style={[s.row, { marginBottom: 16 }]}>
-      <TouchableOpacity onPress={() => setTab('home')} style={{ marginRight: 10 }}>
+      <TouchableOpacity 
+        onPress={() => setTab('home')} 
+        style={{ marginRight: 10 }}
+        accessibilityLabel="Go back to Home"
+        accessibilityRole="button"
+      >
         <Text style={{ color: '#6b7280', fontSize: 16 }}>← Back</Text>
       </TouchableOpacity>
       <Text style={s.pageTitle}>Achievements & Badges</Text>

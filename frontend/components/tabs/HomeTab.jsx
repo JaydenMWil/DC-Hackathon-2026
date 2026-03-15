@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { s, GREEN } from '../_styles';
 
-const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings }) => (
+const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handleOpenReport, setShowGpsSettings, isTracking, distanceM, trackedBus }) => (
   <ScrollView style={s.tabContent} showsVerticalScrollIndicator={false}>
 
     {/* Balance Card */}
@@ -11,6 +11,30 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
       <Text style={s.bigPoints}>{points} points</Text>
       <Text style={{ color: '#bbf7d0', fontSize: 13 }}>Ready to redeem at local partners</Text>
     </View>
+
+    {/* Live Boarding Status */}
+    {isTracking && trackedBus && (
+      <View style={[s.card, s.cardWhite, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: GREEN }]}>
+        <View style={s.rowBetween}>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.mutedSm, { fontWeight: '700', color: GREEN }]}>LIVE BOARDING STATUS</Text>
+            <Text style={{ fontWeight: '700', color: '#111827', fontSize: 16, marginTop: 2 }}>
+              {trackedBus.route_long_name === 'Unknown Route' ? trackedBus.route_name : trackedBus.route_long_name}
+            </Text>
+            <Text style={s.mutedSm}>Vehicle approaching your stop</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>
+              {distanceM ? `${Math.round(distanceM)}m` : '--'}
+            </Text>
+            <Text style={s.mutedSm}>away</Text>
+          </View>
+        </View>
+        <View style={[s.progressTrack, { marginTop: 12, height: 6 }]}>
+          <View style={[s.progressBar, { width: `${Math.max(10, Math.min(100, (1 - (distanceM || 0) / 1000) * 100))}%` }]} />
+        </View>
+      </View>
+    )}
 
     {/* Community Alerts */}
     <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
@@ -28,7 +52,12 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
           <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600', marginTop: 4 }}>+{alert.points} pts for reporter</Text>
         </View>
       ))}
-      <TouchableOpacity style={s.btnOrange} onPress={handleOpenReport}>
+      <TouchableOpacity 
+        style={s.btnOrange} 
+        onPress={handleOpenReport}
+        accessibilityLabel="Report an Issue, earn 20 points"
+        accessibilityRole="button"
+      >
         <Text style={s.btnText}>Report an Issue (+20 pts)</Text>
       </TouchableOpacity>
     </View>
@@ -53,10 +82,18 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
         </View>
       </View>
       <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
-        <TouchableOpacity style={[s.btnHalf, s.btnGray]}>
+        <TouchableOpacity 
+          style={[s.btnHalf, s.btnGray]}
+          accessibilityLabel="Not now"
+          accessibilityRole="button"
+        >
           <Text style={s.btnGrayText}>Not Now</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.btnHalf, s.btnGreen]}>
+        <TouchableOpacity 
+          style={[s.btnHalf, s.btnGreen]}
+          accessibilityLabel="Enable Reminders"
+          accessibilityRole="button"
+        >
           <Text style={s.btnText}>Enable Reminders</Text>
         </TouchableOpacity>
       </View>
@@ -91,7 +128,11 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
           <Text style={s.iconMd}>📍</Text>
           <Text style={s.sectionTitle}>Stop Approach Alerts</Text>
         </View>
-        <TouchableOpacity onPress={() => setShowGpsSettings(true)}>
+        <TouchableOpacity 
+          onPress={() => setShowGpsSettings(true)}
+          accessibilityLabel="Stop Approach Alert Settings"
+          accessibilityRole="button"
+        >
           <Text style={{ color: GREEN, fontSize: 13, fontWeight: '500' }}>Settings</Text>
         </TouchableOpacity>
       </View>
@@ -106,7 +147,12 @@ const HomeTab = ({ points, communityAlerts, gpsAlertEnabled, alertRadius, handle
       ) : (
         <View>
           <Text style={[s.mutedSm, { marginBottom: 10 }]}>Get notified when approaching your destination</Text>
-          <TouchableOpacity style={s.btnGreen} onPress={() => setShowGpsSettings(true)}>
+          <TouchableOpacity 
+            style={s.btnGreen} 
+            onPress={() => setShowGpsSettings(true)}
+            accessibilityLabel="Enable Stop Approach Alerts"
+            accessibilityRole="button"
+          >
             <Text style={s.btnText}>Enable Alerts</Text>
           </TouchableOpacity>
         </View>

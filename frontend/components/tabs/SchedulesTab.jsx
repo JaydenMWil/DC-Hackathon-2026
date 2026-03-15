@@ -95,7 +95,12 @@ const SchedulesTab = ({ setTab }) => {
       <ScrollView style={s.tabContent}>
         <View style={[s.rowBetween, { marginBottom: 14 }]}>
           <Text style={s.pageTitle}>📅 My Schedules</Text>
-          <TouchableOpacity style={s.btnGreen} onPress={() => { setEditingScheduleId(null); setShowScheduleModal(true); }}>
+          <TouchableOpacity 
+            style={s.btnGreen} 
+            onPress={() => { setEditingScheduleId(null); setShowScheduleModal(true); }}
+            accessibilityLabel="Create new schedule"
+            accessibilityRole="button"
+          >
             <Text style={[s.btnText, { paddingHorizontal: 12 }]}>+ New</Text>
           </TouchableOpacity>
         </View>
@@ -135,6 +140,8 @@ const SchedulesTab = ({ setTab }) => {
               <TouchableOpacity
                 style={[s.textInput, { height: 48, marginBottom: 16, justifyContent: 'center' }]}
                 onPress={() => setSelectingFor('origin')}
+                accessibilityLabel="Select Origin location"
+                accessibilityRole="button"
               >
                 <Text style={{ color: selectingFor === 'origin' ? GREEN : '#111827', fontWeight: selectingFor === 'origin' ? '700' : '400' }}>
                   {schedOrigin || "Select Origin"}

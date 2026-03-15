@@ -6,12 +6,12 @@ export const BG = '#f0f7f4';
 
 export const s = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: GREEN },
-  header: { backgroundColor: GREEN, paddingHorizontal: 16, paddingVertical: 14 },
+  header: { backgroundColor: GREEN, paddingHorizontal: 16, paddingBottom: 14 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
   headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   howBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
 
-  tabContent: { flex: 1, paddingHorizontal: 14, paddingTop: 14 },
+  tabContent: { flex: 1, paddingHorizontal: 17, paddingTop: 14 },
 
   card: { borderRadius: 16, padding: 18, marginBottom: 0 },
   cardWhite: { backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', elevation: 2 },
@@ -65,7 +65,13 @@ export const s = StyleSheet.create({
   radioCircle: { width: 18, height: 18, borderRadius: 99, borderWidth: 2, borderColor: '#9ca3af', alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: GREEN },
 
-  bottomNav: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingVertical: 10, paddingHorizontal: 8, paddingBottom: 16 },
+  bottomNav: { flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    paddingBottom: 16,},
   navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 10 },
   navItemActive: { backgroundColor: GREEN },
   navLabel: { fontSize: 11, fontWeight: '500', color: '#6b7280', marginTop: 2 },
