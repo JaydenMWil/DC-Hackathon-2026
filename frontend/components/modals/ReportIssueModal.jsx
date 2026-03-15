@@ -1,6 +1,8 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, TextInput } from 'react-native';
-import { useStyles, GREEN } from '../../core/_styles';
+import { useStyles, GREEN } from '../../logic/_styles';
+import api from '../../logic/api';
+import { crowdingStyle, crowdingEmoji } from '../../logic/_helpers';
 
 const ReportIssueModal = ({
   visible,

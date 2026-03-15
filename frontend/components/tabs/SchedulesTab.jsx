@@ -11,8 +11,9 @@ import {
   Keyboard
 } from 'react-native';
 import MapView, { Marker } from '../MapViewComponent';
-import { useStyles, GREEN } from '../../core/_styles';
-import { allRoutes } from '../../core/data';
+import { useStyles, GREEN } from '../../logic/_styles';
+import { useTheme } from '../../logic/ThemeContext';
+import { allRoutes } from '../../logic/data';
 
 const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
   const { s, theme } = useStyles();

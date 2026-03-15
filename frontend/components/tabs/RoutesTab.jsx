@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { useStyles, GREEN } from '../../core/_styles';
-import { crowdingStyle, crowdingEmoji } from '../../core/_helpers';
+import { useStyles, GREEN } from '../../logic/_styles';
+import { crowdingStyle, crowdingEmoji } from '../../logic/_helpers';
+import { allRoutes } from '../../logic/data';
 
 const RoutesTab = ({ 
   location, 

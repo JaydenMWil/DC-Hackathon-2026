@@ -21,10 +21,10 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import * as Location from 'expo-location';
 
 // ─── Local imports (Updated paths) ───────────────────────────────────────────
-import { useStyles, GREEN, BG } from '../../core/_styles';
-import { ThemeProvider, useTheme } from '../../core/ThemeContext';
-import { QRCode, crowdingStyle, crowdingEmoji } from '../../core/_helpers';
-import { rewards, achievements, regularRouteStop, COMMUNITY_ALERTS_POINTS, ACCESSIBLE_ROUTE_POINTS, PROXIMITY_ALERT_BONUS } from '../../core/data';
+import { useStyles, GREEN, BG } from '../../logic/_styles';
+import { ThemeProvider, useTheme } from '../../logic/ThemeContext';
+import { QRCode, crowdingStyle, crowdingEmoji } from '../../logic/_helpers';
+import { rewards, achievements, regularRouteStop, COMMUNITY_ALERTS_POINTS, ACCESSIBLE_ROUTE_POINTS, PROXIMITY_ALERT_BONUS } from '../../logic/data';
 import * as Haptics from 'expo-haptics';
 import HomeTab from '../../components/tabs/HomeTab';
 import RoutesTab from '../../components/tabs/RoutesTab';
@@ -36,18 +36,12 @@ import SettingsModal from '../../components/modals/SettingsModal';
 import ReportIssueModal from '../../components/modals/ReportIssueModal';
 import GpsSettingsModal from '../../components/modals/GpsSettingsModal';
 import HowItWorksModal from '../../components/modals/HowItWorksModal';
-import api from '../../core/api';
+import api from '../../logic/api';
 import useProximityTracker from '../../components/hooks/useProximityTracker';
 import ProximityAlertOverlay from '../../components/ProximityAlertOverlay';
 
-const AccessRideApp = () => {
-  return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <MainApp />
-      </ThemeProvider>
-    </SafeAreaProvider>
-  );
+const Index = () => {
+  return <MainApp />;
 };
 
 const MainApp = () => {
@@ -584,4 +578,4 @@ const MainApp = () => {
   );
 };
 
-export default AccessRideApp;
+export default Index;

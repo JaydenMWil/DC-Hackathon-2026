@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
-import { useStyles, GREEN } from '../../core/_styles';
+import { useStyles, GREEN } from '../../logic/_styles';
 
 const SmartRerouteModal = ({ 
   visible, 

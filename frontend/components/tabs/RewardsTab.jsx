@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { useStyles, GREEN } from '../../core/_styles';
+import { useStyles, GREEN } from '../../logic/_styles';
+import { rewards } from '../../logic/data';
 
-const RewardsTab = ({ points, streak, rewards, redeem, setTab }) => {
+const RewardsTab = ({ points, streak, redeem, setTab }) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
 

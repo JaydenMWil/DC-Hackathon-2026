@@ -1,13 +1,13 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { useStyles, GREEN } from '../../core/_styles';
+import { useStyles, GREEN } from '../../logic/_styles';
 
 const HowItWorksModal = ({ visible, onClose }) => {
   const { s, theme } = useStyles();
 
   const DiagramStep = ({ num, title, desc, detail }) => (
     <View>
-      <div style={s.stepRow}>
+      <View style={s.stepRow}>
         <View style={s.stepCircle}>
           <Text style={s.stepNum}>{num}</Text>
         </View>
@@ -18,7 +18,7 @@ const HowItWorksModal = ({ visible, onClose }) => {
             <Text style={{ fontSize: 11, color: theme.colors.textSecondary }}>{detail}</Text>
           </View>
         </View>
-      </div>
+      </View>
       <View style={{ alignItems: 'center', marginVertical: 8 }}>
         <Text style={{ color: GREEN, fontSize: 20 }}>↓</Text>
       </View>
