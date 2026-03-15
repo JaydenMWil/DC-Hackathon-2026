@@ -49,6 +49,7 @@ export function createStyles(theme) {
 
     btnOrange: { backgroundColor: '#f97316', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginTop: 8 },
     btnGreen: { backgroundColor: GREEN, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+    btnPurple: { backgroundColor: '#7c3aed', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
     btnGray: { backgroundColor: isDark ? c.border : '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
     btnGrayDisabled: { backgroundColor: isDark ? c.border : '#e5e7eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
     btnHalf: { flex: 1 },

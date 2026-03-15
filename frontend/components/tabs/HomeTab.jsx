@@ -127,8 +127,8 @@ const HomeTab = ({
 
         {!smartRemindersEnabled ? (
           <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
-            <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => {}}>
-              <Text style={s.btnGrayText}>Not Now</Text>
+            <TouchableOpacity style={[s.btnHalf, theme.isDark ? s.btnPurple : s.btnGray]} onPress={() => {}}>
+              <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Not Now</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[s.btnHalf, s.btnGreen]}
@@ -146,10 +146,10 @@ const HomeTab = ({
               <Text style={s.btnText}>DEMO: Simulate Route 915 Issue 🚨</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={s.btnGray}
+              style={theme.isDark ? s.btnPurple : s.btnGray}
               onPress={() => setSmartRemindersEnabled(false)}
             >
-              <Text style={s.btnGrayText}>Disable Reminders</Text>
+              <Text style={theme.isDark ? s.btnText : s.btnGrayText}>Disable Reminders</Text>
             </TouchableOpacity>
           </View>
         )}

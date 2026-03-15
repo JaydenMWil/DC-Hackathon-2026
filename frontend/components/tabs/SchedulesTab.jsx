@@ -13,7 +13,7 @@ import {
 import MapView, { Marker } from '../MapViewComponent';
 import { useStyles, GREEN } from '../_styles';
 
-const SchedulesTab = ({ setTab }) => {
+const SchedulesTab = ({ setTab, savedSchedules = [], setSavedSchedules }) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
   const f = theme.fonts;
@@ -40,7 +40,25 @@ const SchedulesTab = ({ setTab }) => {
     latitudeDelta: 0.02,
     longitudeDelta: 0.02,
   });
-  const [savedSchedules, setSavedSchedules] = useState([]);
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  // Mock available routes for suggestions
+  const allRoutes = [
+    { id: '915', name: '915 Taunton', freq: 'Every 15 min', accessible: true, icon: '🚌' },
+    { id: '405', name: '405 Oshawa', freq: 'Every 20 min', accessible: true, icon: '🚌' },
+    { id: '900', name: '900 Pulse', freq: 'Every 10 min', accessible: true, icon: '⚡' },
+    { id: 'GO-B', name: 'GO Bus - Durham', freq: 'Every 30 min', accessible: true, icon: '🚆' },
+  ];
+
+  const suggestedRoutes = React.useMemo(() => {
+    if (!schedDest) return [];
+    const dest = schedDest.toLowerCase();
+    // Simulate smart matching: "College" -> 915, "Oshawa" -> 405, etc.
+    if (dest.includes('college')) return [allRoutes[0], allRoutes[2]];
+    if (dest.includes('oshawa')) return [allRoutes[1], allRoutes[2]];
+    return [allRoutes[2], allRoutes[3]];
+  }, [schedDest]);
 
   // ── Schedule helpers ─────────────────────────────────────────────────────────
   const handleSearchTyping = (text) => {
@@ -73,7 +91,16 @@ const SchedulesTab = ({ setTab }) => {
     else setSchedDest(label);
   };
 
+  const resetModal = () => {
+    setEditingScheduleId(null);
+    setSchedLabel(''); setSchedOrigin(''); setSchedDest('');
+    setSchedDay('Weekdays'); setSchedHour('08'); setSchedMinute('00'); setSchedAmPm('AM');
+    setSearchQuery(''); setSelectedPin(null); setMapStops([]);
+    setSelectedRouteId(null);
+  };
+
   const saveSchedule = () => {
+    const selectedRoute = allRoutes.find(r => r.id === selectedRouteId);
     const newSchedule = {
       id: editingScheduleId || Date.now().toString(),
       label: schedLabel,
@@ -81,6 +108,8 @@ const SchedulesTab = ({ setTab }) => {
       dest: schedDest,
       day: schedDay,
       time: `${schedHour}:${schedMinute} ${schedAmPm}`,
+      route: selectedRoute ? selectedRoute.name : null,
+      routeIcon: selectedRoute ? selectedRoute.icon : null
     };
     if (editingScheduleId) {
       setSavedSchedules(prev => prev.map(item => item.id === editingScheduleId ? newSchedule : item));
@@ -88,10 +117,39 @@ const SchedulesTab = ({ setTab }) => {
       setSavedSchedules(prev => [...prev, newSchedule]);
     }
     setShowScheduleModal(false);
-    setEditingScheduleId(null);
-    setSchedLabel(''); setSchedOrigin(''); setSchedDest('');
-    setSchedDay('Weekdays'); setSchedHour('08'); setSchedMinute('00'); setSchedAmPm('AM');
-    setSearchQuery(''); setSelectedPin(null); setMapStops([]);
+    resetModal();
+  };
+
+  const handleEdit = (sched) => {
+    setEditingScheduleId(sched.id);
+    setSchedLabel(sched.label);
+    setSchedOrigin(sched.origin);
+    setSchedDest(sched.dest);
+    setSchedDay(sched.day);
+    
+    // Parse time "08:00 AM"
+    const [time, ampm] = sched.time.split(' ');
+    const [hh, mm] = time.split(':');
+    setSchedHour(hh);
+    setSchedMinute(mm);
+    setSchedAmPm(ampm);
+
+    // Find route ID from name
+    const route = allRoutes.find(r => r.name === sched.route);
+    setSelectedRouteId(route ? route.id : null);
+
+    setShowScheduleModal(true);
+  };
+
+  const handleDelete = (id) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      setSavedSchedules(prev => prev.filter(s => s.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    }
   };
 
   return (
@@ -101,7 +159,7 @@ const SchedulesTab = ({ setTab }) => {
           <Text style={s.pageTitle}>📅 My Schedules</Text>
           <TouchableOpacity 
             style={s.btnGreen} 
-            onPress={() => { setEditingScheduleId(null); setShowScheduleModal(true); }}
+            onPress={() => { resetModal(); setShowScheduleModal(true); }}
             accessibilityLabel="Create new schedule"
             accessibilityRole="button"
           >
@@ -116,9 +174,36 @@ const SchedulesTab = ({ setTab }) => {
           </View>
         ) : savedSchedules.map(sched => (
           <View key={sched.id} style={[s.cardWhite, s.card, { padding: 16, marginBottom: 10 }]}>
-            <Text style={{ fontWeight: '700', color: c.text, fontSize: 15 }}>{sched.label}</Text>
-            <Text style={[s.mutedSm, { marginTop: 4 }]}>{sched.origin} → {sched.dest}</Text>
-            <Text style={[s.mutedSm]}>{sched.day} at {sched.time}</Text>
+            <View style={s.rowBetween}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', color: c.text, fontSize: 22 }}>{sched.label}</Text>
+                <Text style={[s.mutedSm, { marginTop: 4 }]}>{sched.origin} → {sched.dest}</Text>
+                <Text style={[s.mutedSm]}>{sched.day} at {sched.time}</Text>
+              </View>
+              {sched.route && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 24 }}>{sched.routeIcon || '🚌'}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: GREEN }}>{sched.route}</Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={[s.divider, { marginVertical: 12 }]} />
+            
+            <View style={[s.row, { gap: 12 }]}>
+              <TouchableOpacity 
+                style={[s.row, { flex: 1, justifyContent: 'center', backgroundColor: c.inputBg, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: c.border }]}
+                onPress={() => handleEdit(sched)}
+              >
+                <Text style={{ fontSize: 14, color: c.text, fontWeight: '500' }}>✏️ Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[s.row, { flex: 1, justifyContent: 'center', backgroundColor: c.dangerBg, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: c.dangerBorder }]}
+                onPress={() => handleDelete(sched.id)}
+              >
+                <Text style={{ fontSize: 14, color: c.dangerText, fontWeight: '500' }}>🗑️ Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
         <View style={{ height: 80 }} />
@@ -233,14 +318,54 @@ const SchedulesTab = ({ setTab }) => {
                     </View>
                   )}
                 </View>
-              </View>
+               </View>
+
+              {/* Suggested Routes Section */}
+              {suggestedRoutes.length > 0 && (
+                <View style={{ marginBottom: 20 }}>
+                  <Text style={s.fieldLabel}>Suggested Routes for this trip</Text>
+                  <View style={{ gap: 8 }}>
+                    {suggestedRoutes.map((route) => (
+                      <TouchableOpacity
+                        key={route.id}
+                        onPress={() => setSelectedRouteId(route.id === selectedRouteId ? null : route.id)}
+                        style={[
+                          s.cardWhite, 
+                          s.card, 
+                          { 
+                            padding: 12, 
+                            borderWidth: 2, 
+                            borderColor: selectedRouteId === route.id ? GREEN : c.border 
+                          }
+                        ]}
+                      >
+                        <View style={s.rowBetween}>
+                          <View style={s.row}>
+                            <Text style={{ fontSize: 24, marginRight: 12 }}>{route.icon}</Text>
+                            <View>
+                              <Text style={{ fontWeight: '700', color: c.text }}>{route.name}</Text>
+                              <Text style={s.mutedSm}>{route.freq}</Text>
+                            </View>
+                          </View>
+                          {route.accessible && <Text style={{ fontSize: 12, color: GREEN }}>♿ Accessible</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               <Text style={s.fieldLabel}>Day</Text>
               <View style={[s.row, { gap: 8, marginBottom: 16, flexWrap: 'wrap' }]}>
                 {['Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
                   <TouchableOpacity
                     key={d}
-                    style={[s.badge, schedDay === d ? { backgroundColor: GREEN } : { backgroundColor: c.border }]}
+                    style={[
+                      s.badge, 
+                      schedDay === d 
+                        ? { backgroundColor: GREEN } 
+                        : { backgroundColor: c.card, borderWidth: 1, borderColor: c.border }
+                    ]}
                     onPress={() => setSchedDay(d)}
                   >
                     <Text style={{ color: schedDay === d ? '#fff' : c.text, fontWeight: '600' }}>{d}</Text>
@@ -269,24 +394,34 @@ const SchedulesTab = ({ setTab }) => {
                     maxLength={2}
                   />
                 </View>
-                <View style={[s.row, { backgroundColor: c.border, borderRadius: 8, overflow: 'hidden' }]}>
+                <View style={[s.row, { padding: 4, backgroundColor: c.card, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: c.border }]}>
                   <TouchableOpacity
-                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' }}
+                    style={{ 
+                      paddingHorizontal: 16, 
+                      paddingVertical: 10, 
+                      borderRadius: 6,
+                      backgroundColor: schedAmPm === 'AM' ? GREEN : 'transparent' 
+                    }}
                     onPress={() => setSchedAmPm('AM')}
                   >
-                    <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : c.textSecondary }}>AM</Text>
+                    <Text style={{ fontWeight: '700', color: schedAmPm === 'AM' ? '#fff' : c.text }}>AM</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' }}
+                    style={{ 
+                      paddingHorizontal: 16, 
+                      paddingVertical: 10, 
+                      borderRadius: 6,
+                      backgroundColor: schedAmPm === 'PM' ? GREEN : 'transparent' 
+                    }}
                     onPress={() => setSchedAmPm('PM')}
                   >
-                    <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : c.textSecondary }}>PM</Text>
+                    <Text style={{ fontWeight: '700', color: schedAmPm === 'PM' ? '#fff' : c.text }}>PM</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               <View style={[s.row, { gap: 10 }]}>
-                <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setShowScheduleModal(false)}>
+                <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={() => setShowScheduleModal(false)}>
                   <Text style={s.btnGrayText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={saveSchedule}>
@@ -296,6 +431,34 @@ const SchedulesTab = ({ setTab }) => {
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={!!deleteConfirmId} transparent animationType="fade" onRequestClose={() => setDeleteConfirmId(null)}>
+        <View style={s.overlay}>
+          <TouchableOpacity style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]} activeOpacity={1} onPress={() => setDeleteConfirmId(null)} />
+          <View style={s.modalBox}>
+            <Text style={[s.modalTitle, { color: c.dangerText }]}>Confirm Delete</Text>
+            <Text style={[s.bodyText, { marginBottom: 24, fontSize: 16, color: c.text }]}>
+              Are you sure you want to delete this schedule? This action cannot be undone.
+            </Text>
+
+            <View style={[s.row, { gap: 12 }]}>
+              <TouchableOpacity 
+                style={[s.btnHalf, { backgroundColor: c.dangerText, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]} 
+                onPress={() => setDeleteConfirmId(null)}
+              > 
+                <Text style={s.btnGrayText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[s.btnHalf, { backgroundColor: c.dangerText, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]} 
+                onPress={confirmDelete}
+              >
+                <Text style={s.btnText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );

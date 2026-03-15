@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Dimensions
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -56,6 +57,7 @@ const MainApp = () => {
   const [streak, setStreak] = useState(5);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [showReward, setShowReward] = useState(null);
+  const [redeemConfirm, setRedeemConfirm] = useState(null);
   const [gpsAlertEnabled, setGpsAlertEnabled] = useState(false);
   const [alertRadius, setAlertRadius] = useState(100);
   const [showGpsSettings, setShowGpsSettings] = useState(false);
@@ -107,6 +109,10 @@ const MainApp = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [filterAccessible, setFilterAccessible] = useState(false);
   const [filterLimited, setFilterLimited] = useState(false);
+
+  // ── Schedules persistence state ─────────────────────────────────────────────
+  const [savedSchedules, setSavedSchedules] = useState([]);
+  const AS_KEY = 'ACCESS_RIDE_SCHEDULES';
 
   // ── Proximity Tracker Hook ────────────────────────────────────────────────
   const {
@@ -232,6 +238,32 @@ const MainApp = () => {
     fetchCommunityAlerts();
   }, []);
 
+  // ── Schedules Storage Effects ───────────────────────────────────────────────
+  useEffect(() => {
+    // Load on mount
+    const loadScheds = async () => {
+      try {
+        const val = await AsyncStorage.getItem(AS_KEY);
+        if (val) setSavedSchedules(JSON.parse(val));
+      } catch (e) {
+        console.error("Failed to load schedules", e);
+      }
+    };
+    loadScheds();
+  }, []);
+
+  useEffect(() => {
+    // Save on change
+    const saveScheds = async () => {
+      try {
+        await AsyncStorage.setItem(AS_KEY, JSON.stringify(savedSchedules));
+      } catch (e) {
+        console.error("Failed to save schedules", e);
+      }
+    };
+    saveScheds();
+  }, [savedSchedules]);
+
   // ── Actions ─────────────────────────────────────────────────────────────────
   const selectRoute = (route) => {
     setSelectedRoute(route);
@@ -240,8 +272,15 @@ const MainApp = () => {
 
   const redeem = (reward) => {
     if (points >= reward.pts && !reward.claimed) {
-      setPoints(p => p - reward.pts);
-      setShowReward(reward);
+      setRedeemConfirm(reward);
+    }
+  };
+
+  const confirmRedeem = () => {
+    if (redeemConfirm && points >= redeemConfirm.pts) {
+      setPoints(p => p - redeemConfirm.pts);
+      setShowReward(redeemConfirm);
+      setRedeemConfirm(null);
     }
   };
 
@@ -426,7 +465,7 @@ const MainApp = () => {
             onStopTracking={stopTracking}
           />
         )}
-        {tab === 'schedules' && <SchedulesTab setTab={setTab} />}
+        {tab === 'schedules' && <SchedulesTab setTab={setTab} savedSchedules={savedSchedules} setSavedSchedules={setSavedSchedules} />}
         {tab === 'rewards' && <RewardsTab points={points} streak={streak} rewards={rewards} redeem={redeem} setTab={setTab} />}
         {tab === 'achievements' && <AchievementsTab achievements={achievements} setTab={setTab} />}
       </View>
@@ -583,6 +622,38 @@ const MainApp = () => {
               </View>
             )}
           </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Reward Confirmation Modal */}
+      <Modal visible={!!redeemConfirm} transparent animationType="fade" onRequestClose={() => setRedeemConfirm(null)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setRedeemConfirm(null)}>
+          <View style={s.modalBox}>
+            <Text style={[s.modalTitle, { textAlign: 'center' }]}>Confirm Redemption?</Text>
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <Text style={{ fontSize: 64, marginBottom: 12 }}>{redeemConfirm?.icon}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>{redeemConfirm?.name}</Text>
+              <Text style={{ color: theme.colors.textSecondary }}>{redeemConfirm?.offer}</Text>
+            </View>
+            
+            <View style={[s.infoBanner, { backgroundColor: theme.isDark ? 'rgba(234,179,8,0.1)' : '#fefce8', alignItems: 'center', marginBottom: 20 }]}>
+              <Text style={{ color: theme.isDark ? '#facc15' : '#a16207', fontWeight: '700', fontSize: 16 }}>
+                Cost: {redeemConfirm?.pts} Points
+              </Text>
+              <Text style={{ color: theme.isDark ? '#eab308' : '#ca8a04', fontSize: 12, marginTop: 4 }}>
+                Balance after: {points - (redeemConfirm?.pts || 0)} pts
+              </Text>
+            </View>
+
+            <View style={[s.row, { gap: 10 }]}>
+              <TouchableOpacity style={[s.btnHalf, s.btnGray]} onPress={() => setRedeemConfirm(null)}>
+                <Text style={s.btnGrayText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btnHalf, s.btnGreen]} onPress={confirmRedeem}>
+                <Text style={s.btnText}>Confirm & Claim</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </TouchableOpacity>
       </Modal>
 
