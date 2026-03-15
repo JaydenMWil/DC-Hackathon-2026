@@ -122,6 +122,7 @@ const MainApp = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [filterAccessible, setFilterAccessible] = useState(false);
   const [filterLimited, setFilterLimited] = useState(false);
+  const [maxCrowding, setMaxCrowding] = useState([]); // Array of 'low', 'medium', 'high'
 
   // ── Schedules persistence state ─────────────────────────────────────────────
   const [savedSchedules, setSavedSchedules] = useState([]);
@@ -226,8 +227,16 @@ const MainApp = () => {
     let r = [...liveRoutes];
     if (filterAccessible) r = r.filter(x => x.accessible);
     if (filterLimited) r = r.slice(0, 5);
+    
+    // Crowding Filter logic:
+    // User requested that if none are selected, all should be shown.
+    // Also if all 3 are selected, effectively show all.
+    if (maxCrowding.length > 0 && maxCrowding.length < 3) {
+      r = r.filter(x => maxCrowding.includes(x.crowding));
+    }
+    
     return r;
-  }, [liveRoutes, filterAccessible, filterLimited]);
+  }, [liveRoutes, filterAccessible, filterLimited, maxCrowding]);
 
   // ── Community alerts ──────────────────────────────────────────────────────
   const [communityAlerts, setCommunityAlerts] = useState([]);
@@ -431,9 +440,11 @@ const MainApp = () => {
             selectRoute={selectRoute} 
             filterAccessible={filterAccessible} 
             filterLimited={filterLimited} 
+            maxCrowding={maxCrowding}
             setTab={setTab} 
             setFilterAccessible={setFilterAccessible} 
             setFilterLimited={setFilterLimited}
+            setMaxCrowding={setMaxCrowding}
             isTracking={isTracking}
             trackedBus={trackedBus}
             onStartTracking={startTracking}

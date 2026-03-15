@@ -3,7 +3,12 @@ __pycache__/
 frontend/node_modules
 node_modules
 .expo/
-
+__pycache__/
+*.pyc
 # Local environment variables
 .env
 .env.local
+
+*.db
+*.db-shm
+*.db-wal

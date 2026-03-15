@@ -58,7 +58,13 @@ export const crowdingStyle = (crowding) => {
 };
 
 export const crowdingEmoji = (crowding) => {
-  if (crowding === 'low') return '🟢';
-  if (crowding === 'medium') return '🟡';
-  return '🔴';
+  if (crowding === 'low') return '✈️';
+  if (crowding === 'medium') return '🚌';
+  return '🧱';
+};
+
+export const crowdingVibe = (level) => {
+  if (level === 'low') return 'Private Jet';
+  if (level === 'medium') return 'The Usual';
+  return 'Wall-to-Wall';
 };

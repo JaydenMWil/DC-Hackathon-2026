@@ -1,21 +1,24 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useStyles, GREEN } from '../../logic/_styles';
-import { crowdingStyle, crowdingEmoji } from '../../logic/_helpers';
+import { crowdingStyle, crowdingEmoji, crowdingVibe } from '../../logic/_helpers';
 import { allRoutes } from '../../logic/data';
 
-const RoutesTab = React.forwardRef(({ 
-  location, 
-  filteredRoutes, 
-  refreshing, 
-  onRefresh, 
-  selectedRoute, 
-  selectRoute, 
-  filterAccessible, 
-  filterLimited, 
-  setTab, 
-  setFilterAccessible, 
+const RoutesTab = React.forwardRef(({
+  location,
+  filteredRoutes,
+  refreshing,
+  onRefresh,
+  selectedRoute,
+  selectRoute,
+  filterAccessible,
+  filterLimited,
+  maxCrowding,
+  setTab,
+  setFilterAccessible,
+
   setFilterLimited,
+  setMaxCrowding,
   isTracking,
   trackedBus,
   onStartTracking,
@@ -23,6 +26,20 @@ const RoutesTab = React.forwardRef(({
 }, ref) => {
   const { s, theme } = useStyles();
   const c = theme.colors;
+
+  const crowdOptions = [
+    { level: 'low', label: 'Private Jet', emoji: '✈️' },
+    { level: 'medium', label: 'The Usual', emoji: '🚌' },
+    { level: 'high', label: 'Wall-to-Wall', emoji: '🧱' },
+  ];
+
+  const toggleCrowding = (level) => {
+    if (maxCrowding.includes(level)) {
+      setMaxCrowding(maxCrowding.filter(l => l !== level));
+    } else {
+      setMaxCrowding([...maxCrowding, level]);
+    }
+  };
 
   return (
     <ScrollView 
@@ -32,8 +49,8 @@ const RoutesTab = React.forwardRef(({
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
     >
       <View style={[s.row, { marginBottom: 16 }]}>
-        <TouchableOpacity 
-          onPress={() => setTab('home')} 
+        <TouchableOpacity
+          onPress={() => setTab('home')}
           style={{ marginRight: 10 }}
           accessibilityLabel="Go back to Home"
           accessibilityRole="button"
@@ -43,26 +60,42 @@ const RoutesTab = React.forwardRef(({
         <Text style={s.pageTitle}>Live Routes near you</Text>
       </View>
 
-      {/* Filters */}
-      <View style={[s.row, { marginBottom: 16, gap: 10 }]}>
-        <TouchableOpacity 
-          style={[s.filterChip, filterAccessible && s.filterChipActive]} 
+      {/* Primary Filters */}
+      <View style={[s.row, { marginBottom: 12, gap: 10 }]}>
+        <TouchableOpacity
+          style={[s.filterChip, filterAccessible && s.filterChipActive]}
           onPress={() => setFilterAccessible(!filterAccessible)}
-          accessibilityLabel="Filter by Accessible routes"
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: filterAccessible }}
         >
           <Text style={[s.filterChipText, filterAccessible && s.filterChipTextActive]}>♿ Accessible</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[s.filterChip, filterLimited && s.filterChipActive]} 
+        <TouchableOpacity
+          style={[s.filterChip, filterLimited && s.filterChipActive]}
           onPress={() => setFilterLimited(!filterLimited)}
-          accessibilityLabel="Show top 5 nearest routes"
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: filterLimited }}
         >
           <Text style={[s.filterChipText, filterLimited && s.filterChipTextActive]}>📍 Top 5</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Crowd Meter Selector */}
+      <View style={{ marginBottom: 16 }}>
+        <Text style={[s.mutedSm, { marginBottom: 8, marginLeft: 4, fontWeight: '600', color: c.textSecondary }]}>CROWD METER</Text>
+        <View style={[s.row, { gap: 8 }]}>
+          {crowdOptions.map((opt) => (
+            <TouchableOpacity
+              key={opt.level}
+              style={[
+                s.filterChip,
+                { flex: 1, alignItems: 'center', justifyContent: 'center', height: 44 },
+                maxCrowding.includes(opt.level) && s.filterChipActive
+              ]}
+              onPress={() => toggleCrowding(opt.level)}
+            >
+              <Text style={[s.filterChipText, maxCrowding.includes(opt.level) && s.filterChipTextActive, { fontSize: 13, fontWeight: '600' }]}>
+                {opt.emoji} {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <View style={[s.card, s.cardWhite, { marginBottom: 12 }]}>
@@ -98,12 +131,12 @@ const RoutesTab = React.forwardRef(({
             <TouchableOpacity
               key={route.id}
               style={[
-                s.card, 
-                s.cardWhite, 
-                { 
-                  marginBottom: 10, 
-                  borderWidth: selected || beingTracked ? 2 : 1, 
-                  borderColor: beingTracked ? '#22c55e' : (selected ? GREEN : c.border) 
+                s.card,
+                s.cardWhite,
+                {
+                  marginBottom: 10,
+                  borderWidth: selected || beingTracked ? 2 : 1,
+                  borderColor: beingTracked ? '#22c55e' : (selected ? GREEN : c.border)
                 }
               ]}
               onPress={() => selectRoute(route)}
@@ -124,8 +157,8 @@ const RoutesTab = React.forwardRef(({
                   </View>
                   <View style={{ marginBottom: 4 }}>
                     <Text style={{ fontSize: 20, fontWeight: '600', color: c.text }} numberOfLines={1}>
-                      {route.route_long_name === 'Unknown Route' 
-                        ? (isNaN(route.route_name) ? route.route_name : `Route ${route.route_name}`) 
+                      {route.route_long_name === 'Unknown Route'
+                        ? (isNaN(route.route_name) ? route.route_name : `Route ${route.route_name}`)
                         : route.route_long_name}
                     </Text>
                   </View>
@@ -133,23 +166,25 @@ const RoutesTab = React.forwardRef(({
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ color: GREEN, fontWeight: '700' }}>+15 pts</Text>
-                  <View style={[s.badge, { backgroundColor: cs.bg, marginTop: 4 }]}>
-                    <Text style={{ color: cs.text, fontSize: 11, fontWeight: '600' }}>{crowdingEmoji(route.crowding)} {route.crowding}</Text>
+                  <View style={[s.badge, { backgroundColor: cs.bg, marginTop: 4, paddingHorizontal: 8 }]}>
+                    <Text style={{ color: cs.text, fontSize: 11, fontWeight: '700' }}>
+                      {crowdingEmoji(route.crowding)} {crowdingVibe(route.crowding)}
+                    </Text>
                   </View>
                 </View>
               </View>
               {selected && (
                 <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.border, flexDirection: 'row', gap: 10 }}>
                   {!beingTracked ? (
-                    <TouchableOpacity 
-                      style={[s.btnGreen, { flex: 1 }]} 
+                    <TouchableOpacity
+                      style={[s.btnGreen, { flex: 1 }]}
                       onPress={() => onStartTracking(route)}
                     >
                       <Text style={s.btnText}>Start Tracking</Text>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity 
-                      style={[s.btnGreen, { flex: 1, backgroundColor: c.dangerText }]} 
+                    <TouchableOpacity
+                      style={[s.btnGreen, { flex: 1, backgroundColor: c.dangerText }]}
                       onPress={() => onStopTracking()}
                     >
                       <Text style={s.btnText}>Stop Tracking</Text>

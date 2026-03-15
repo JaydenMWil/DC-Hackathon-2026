@@ -37,26 +37,35 @@ const SettingsModal = ({
       <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { if (settingsSection) setSettingsSection(null); else setShowSettings(false); }} />
       <View style={{ backgroundColor: c.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' }}>
         {/* Settings Header */}
-        <View style={{ backgroundColor: c.headerBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          {settingsSection ? (
-            <TouchableOpacity onPress={() => setSettingsSection(null)}>
-              <Text style={{ color: '#fff', fontSize: 16 }}>← Back</Text>
-            </TouchableOpacity>
-          ) : <View style={{ width: 50 }} />}
+        <View style={{ backgroundColor: c.headerBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center' }}>
+          {/* Left Side (Back) */}
+          <View style={{ width: 70, alignItems: 'flex-start' }}>
+            {settingsSection && (
+              <TouchableOpacity onPress={() => setSettingsSection(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ color: '#fff', fontSize: 16 }}>← Back</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Center (Title) */}
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{ color: c.textOnGreen, fontSize: f.title, fontWeight: '700', textAlign: 'center' }}>
-              {settingsSection === 'appearance' ? '🎨 Appearance'
-                : settingsSection === 'account' ? '👤 Account & Security'
-                : settingsSection === 'accessibility' ? '♿ Accessibility'
-                : settingsSection === 'language' ? '🌐 Language & Region'
-                : settingsSection === 'privacy' ? '🔒 Privacy'
-                : settingsSection === 'support' ? '💬 Support'
-                : '⚙️ Settings'}
+              {settingsSection === 'appearance' ? 'Appearance'
+                : settingsSection === 'account' ? 'Account & Security'
+                  : settingsSection === 'accessibility' ? 'Accessibility'
+                    : settingsSection === 'language' ? 'Language & Region'
+                      : settingsSection === 'privacy' ? 'Privacy'
+                        : settingsSection === 'support' ? 'Support'
+                          : 'Settings'}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowSettings(false)}>
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>✕</Text>
-          </TouchableOpacity>
+
+          {/* Right Side (Close) */}
+          <View style={{ width: 70, alignItems: 'flex-end' }}>
+            <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView style={{ paddingHorizontal: 16, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
@@ -85,7 +94,7 @@ const SettingsModal = ({
           )}
 
           {/* ── APPEARANCE ── */}
-           {settingsSection === 'appearance' && (
+          {settingsSection === 'appearance' && (
             <View style={{ paddingBottom: 40 }}>
               {/* Live Preview Card */}
               <View style={[s.card, s.cardWhite, { marginBottom: 16, borderLeftWidth: 4, borderLeftColor: GREEN }]}>
