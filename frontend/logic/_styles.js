@@ -24,7 +24,7 @@ export function createStyles(theme) {
 
     tabContent: { flex: 1, paddingHorizontal: 17, paddingTop: 14 },
 
-    card: { borderRadius: 16, padding: 18, marginBottom: 0 },
+    card: { borderRadius: 16, padding: 20, marginBottom: 0 },
     cardWhite: {
       backgroundColor: c.card,
       ...(Platform.OS === 'web'
