@@ -2,7 +2,7 @@
 
 **Inclusive Transit Companion for the Durham Region**
 
-AccessRide is a premium, accessibility-first mobile application designed to make public transit more inclusive and rewarding. It integrates real-time transit data from Durham Region Transit (DRT) with community-driven reporting, a gamified rewards system, and smart routine reminders.
+AccessRide is a premium, cross-platform accessibility-first mobile application designed to make public transit more inclusive and rewarding. It integrates real-time transit data from Durham Region Transit (DRT) with community-driven reporting, a gamified rewards system, and smart routine reminders.
 
 ---
 
@@ -22,30 +22,34 @@ AccessRide follows a modern, decoupled architecture:
 
 - [Node.js](https://nodejs.org/) (LTS version)
 - [Python 3.10+](https://www.python.org/downloads/)
-- [Expo Go](https://expo.dev/go) app on your physical device for the best experience.
+- [Expo Go](https://expo.dev/go) app on your physical device (optional, for testing)
 
 ---
 
 ## 🐍 Backend Setup (FastAPI)
 
 1. **Navigate to the backend directory**:
+
    ```powershell
    cd backend
    ```
 
 2. **Create and Activate a Virtual Environment**:
+
    ```powershell
    python -m venv venv
    .\venv\Scripts\activate
    ```
 
 3. **Install Dependencies**:
+
    ```powershell
    pip install -r requirements.txt
    ```
 
 4. **Run the Server**:
    ```powershell
+   cd backend
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
    _The server will start at `http://localhost:8000`._
@@ -55,11 +59,13 @@ AccessRide follows a modern, decoupled architecture:
 ## 📱 Frontend Setup (Expo)
 
 1. **Navigate to the frontend directory**:
+
    ```powershell
    cd frontend
    ```
 
 2. **Install Dependencies**:
+
    ```bash
    npm install
    ```
@@ -68,7 +74,9 @@ AccessRide follows a modern, decoupled architecture:
    The app uses `process.env.EXPO_PUBLIC_API_URL`. Ensure your local machine's IP address is configured if testing on a physical device.
 
 4. **Start the App**:
+
    ```bash
+   cd frontend
    npx expo start -c
    ```
 

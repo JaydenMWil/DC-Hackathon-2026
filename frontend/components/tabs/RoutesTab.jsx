@@ -28,11 +28,11 @@ const RoutesTab = React.forwardRef(({
   const c = theme.colors;
 
   const crowdOptions = [
-    { level: 'low', label: 'Private Jet', emoji: '✈️' },
-    { level: 'medium', label: 'The Usual', emoji: '🚌' },
-    { level: 'high', label: 'Wall-to-Wall', emoji: '🧱' },
+    { level: 'low', label: 'Low Crowd', emoji: '🪫' },
+    { level: 'medium', label: 'Usual Crowd', emoji: '🚌' },
+    { level: 'high', label: 'High Crowd', emoji: '🔋' },
   ];
-
+ 
   const toggleCrowding = (level) => {
     if (maxCrowding.includes(level)) {
       setMaxCrowding(maxCrowding.filter(l => l !== level));
