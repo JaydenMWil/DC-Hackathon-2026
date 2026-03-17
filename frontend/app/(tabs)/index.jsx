@@ -205,11 +205,26 @@ const MainApp = () => {
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      let loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc);
-      fetchLiveRoutes(loc);
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          // Fallback if permission denied
+          const fallback = { coords: regularRouteStop };
+          setLocation(fallback);
+          fetchLiveRoutes(fallback);
+          return;
+        }
+
+        let loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc);
+        fetchLiveRoutes(loc);
+      } catch (err) {
+        console.warn("Location error:", err);
+        // Fallback if service unavailable/disabled
+        const fallback = { coords: regularRouteStop };
+        setLocation(fallback);
+        fetchLiveRoutes(fallback);
+      }
     })();
   }, []);
 
